@@ -124,5 +124,18 @@
         "Fruit": "Fruit",
         "Couverture": "Couverture",
         "Réserve": "Réserve"
+    },
+    "bootstrap": {
+        "cycle_label": "Cycle",
+        "progress_label": "sous-planches remplies",
+        "warning_existing": "Des données existent déjà pour ce cycle. L'enregistrement les remplacera.",
+        "quick_fill": "Tout remplir :",
+        "auto_distribute": "Répartition automatique",
+        "save_button": "Enregistrer le démarrage",
+        "select_category": "— Catégorie —",
+        "select_crop": "— Culture (optionnel) —",
+        "validation_error": "Chaque sous-planche doit avoir une catégorie.",
+        "expand_all": "Tout déplier",
+        "collapse_all": "Tout replier"
     }
 }

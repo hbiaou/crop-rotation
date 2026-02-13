@@ -598,3 +598,43 @@ def get_categories():
     ).fetchall()
     conn.close()
     return [row['category'] for row in cats]
+
+
+# ========================================
+# Cycle Plans
+# ========================================
+
+def get_cycle_plans_for_garden_cycle(garden_id, cycle):
+    """Get existing cycle_plans for a garden+cycle combination."""
+    conn = get_db()
+    plans = conn.execute(
+        "SELECT * FROM cycle_plans WHERE garden_id = ? AND cycle = ?",
+        (garden_id, cycle)
+    ).fetchall()
+    conn.close()
+    return plans
+
+
+def create_cycle_plans_batch(records):
+    """Bulk-insert cycle_plans records. Each record is a dict with keys:
+    sub_bed_id, garden_id, cycle, planned_category, planned_crop_id,
+    actual_category, actual_crop_id, is_override.
+    Returns True on success, False on failure.
+    """
+    conn = get_db()
+    try:
+        conn.executemany(
+            """INSERT OR REPLACE INTO cycle_plans
+               (sub_bed_id, garden_id, cycle, planned_category, planned_crop_id,
+                actual_category, actual_crop_id, is_override)
+               VALUES (:sub_bed_id, :garden_id, :cycle, :planned_category, :planned_crop_id,
+                        :actual_category, :actual_crop_id, :is_override)""",
+            records
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

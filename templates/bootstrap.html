@@ -1,6 +1,105 @@
 {% extends "base.html" %}
+
 {% block title %}{{ i18n.pages.bootstrap_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
 {% block content %}
-<h1>{{ i18n.pages.bootstrap_title }}</h1>
-<!-- Bootstrap (initial data entry) will be implemented in a future session -->
+<div class="bootstrap-page" data-garden-id="{{ garden.id }}" data-total="{{ total_sub_beds }}">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <a href="{{ url_for('main.index') }}" class="back-link">← {{ i18n.nav.home }}</a>
+        <h1 class="page-title">{{ i18n.pages.bootstrap_title }}</h1>
+        <p class="page-subtitle">
+            {{ garden.garden_code }} — {{ garden.name }} · {{ i18n.bootstrap.cycle_label }}: <strong>{{ current_cycle
+                }}</strong>
+        </p>
+    </div>
+
+    <!-- Warning for existing data -->
+    {% if has_existing %}
+    <div class="flash flash-warning bootstrap-warning">
+        ⚠️ {{ i18n.bootstrap.warning_existing }}
+    </div>
+    {% endif %}
+
+    <!-- Sticky Progress Header -->
+    <div class="bootstrap-header" id="bootstrapProgress">
+        <div class="progress-info">
+            <span class="progress-text" id="progressText">0/{{ total_sub_beds }} {{ i18n.bootstrap.progress_label
+                }}</span>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="bootstrap-toolbar">
+        <div class="toolbar-group">
+            <span class="toolbar-label">{{ i18n.bootstrap.quick_fill }}</span>
+            {% for cat in categories %}
+            <button type="button" class="btn btn-sm cat-btn cat-{{ cat|lower }}" data-quick-fill="{{ cat }}">
+                {{ i18n.categories[cat] }}
+            </button>
+            {% endfor %}
+        </div>
+        <div class="toolbar-group">
+            <button type="button" class="btn btn-accent btn-sm" id="autoDistribute">
+                <span class="btn-icon">🎲</span> {{ i18n.bootstrap.auto_distribute }}
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" id="expandAll">{{ i18n.bootstrap.expand_all }}</button>
+            <button type="button" class="btn btn-outline btn-sm" id="collapseAll">{{ i18n.bootstrap.collapse_all
+                }}</button>
+        </div>
+    </div>
+
+    <!-- Bootstrap Form -->
+    <form method="post" action="{{ url_for('cycle.bootstrap_save', garden_id=garden.id) }}" id="bootstrapForm">
+
+        {% for bed_number, sub_beds in beds_grouped.items() %}
+        <div class="bed-card" data-bed="{{ bed_number }}">
+            <div class="bed-card-header" data-toggle-bed="{{ bed_number }}">
+                <span class="bed-label">P{{ '%02d' | format(bed_number) }}</span>
+                <span class="bed-count">{{ sub_beds|length }} {{ i18n.stats.sub_beds }}</span>
+                <span class="bed-toggle">▾</span>
+            </div>
+            <div class="bed-card-body" id="bed-body-{{ bed_number }}">
+                {% for sb in sub_beds %}
+                <div class="sub-bed-entry" data-subbed-id="{{ sb.id }}">
+                    <span class="sub-bed-label">P{{ '%02d' | format(sb.bed_number) }}-S{{ sb.sub_bed_position }}</span>
+
+                    <select name="category_{{ sb.id }}" class="form-select category-select" data-subbed="{{ sb.id }}">
+                        <option value="">{{ i18n.bootstrap.select_category }}</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">{{ i18n.categories[cat] }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="crop_{{ sb.id }}" class="form-select crop-select" data-subbed="{{ sb.id }}">
+                        <option value="">{{ i18n.bootstrap.select_crop }}</option>
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Submit Button -->
+        <div class="bootstrap-footer">
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBootstrap">
+                <span class="btn-icon">💾</span> {{ i18n.bootstrap.save_button }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Crops data for JS filtering -->
+<script>
+    window.CROPS_BY_CATEGORY = {{ crops_json | safe }};
+    window.BOOTSTRAP_I18N = {
+        select_crop: "{{ i18n.bootstrap.select_crop }}",
+        validation_error: "{{ i18n.bootstrap.validation_error }}",
+        progress_label: "{{ i18n.bootstrap.progress_label }}"
+    };
+</script>
 {% endblock %}
