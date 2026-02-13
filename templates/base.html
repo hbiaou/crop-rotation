@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" media="print">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -25,15 +27,18 @@
                 <span></span>
             </button>
             <ul class="nav-links" id="navLinks">
-                <li><a href="{{ url_for('main.index') }}" class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">
-                    <span class="nav-link-icon">🏠</span> {{ i18n.nav.home }}
-                </a></li>
-                <li><a href="#" class="nav-link {% if request.endpoint and 'settings' in request.endpoint %}active{% endif %}">
-                    <span class="nav-link-icon">⚙️</span> {{ i18n.nav.settings }}
-                </a></li>
-                <li><a href="#" class="nav-link {% if request.endpoint and 'export' in request.endpoint %}active{% endif %}">
-                    <span class="nav-link-icon">📤</span> {{ i18n.nav.export }}
-                </a></li>
+                <li><a href="{{ url_for('main.index') }}"
+                        class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">
+                        <span class="nav-link-icon">🏠</span> {{ i18n.nav.home }}
+                    </a></li>
+                <li><a href="{{ url_for('settings.index') }}"
+                        class="nav-link {% if request.endpoint and 'settings' in request.endpoint %}active{% endif %}">
+                        <span class="nav-link-icon">⚙️</span> {{ i18n.nav.settings }}
+                    </a></li>
+                <li><a href="#"
+                        class="nav-link {% if request.endpoint and 'export' in request.endpoint %}active{% endif %}">
+                        <span class="nav-link-icon">📤</span> {{ i18n.nav.export }}
+                    </a></li>
             </ul>
         </div>
     </nav>
@@ -41,19 +46,20 @@
     <!-- Flash Messages -->
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash flash-{{ category }}" role="alert">
-                            <span class="flash-icon">
-                                {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
-                            </span>
-                            <span class="flash-text">{{ message }}</span>
-                            <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Fermer">&times;</button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}" role="alert">
+                <span class="flash-icon">
+                    {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{%
+                    else %}ℹ️{% endif %}
+                </span>
+                <span class="flash-text">{{ message }}</span>
+                <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Fermer">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% endwith %}
     </div>
 
@@ -72,4 +78,5 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

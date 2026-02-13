@@ -1,6 +1,609 @@
 {% extends "base.html" %}
+
 {% block title %}{{ i18n.pages.settings_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
 {% block content %}
-<h1>{{ i18n.pages.settings_title }}</h1>
-<!-- Settings page will be implemented in a future session -->
+<div class="page-header">
+    <h1 class="page-title">⚙️ {{ i18n.pages.settings_title }}</h1>
+    <p class="page-subtitle">Configuration des jardins, cultures, rotation et sauvegardes</p>
+</div>
+
+<!-- Forward-only warning -->
+<div class="settings-warning">
+    <span class="settings-warning-icon">⚠️</span>
+    <span>{{ i18n.messages.warning_settings_forward }}</span>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs-container">
+    <div class="tabs-nav" role="tablist">
+        <button class="tab-btn active" data-tab="jardins" role="tab" aria-selected="true">
+            <span class="tab-icon">🌿</span> Jardins
+        </button>
+        <button class="tab-btn" data-tab="cultures" role="tab" aria-selected="false">
+            <span class="tab-icon">🌾</span> Cultures
+        </button>
+        <button class="tab-btn" data-tab="rotation" role="tab" aria-selected="false">
+            <span class="tab-icon">🔄</span> Séquence
+        </button>
+        <button class="tab-btn" data-tab="cycles" role="tab" aria-selected="false">
+            <span class="tab-icon">📅</span> Cycles
+        </button>
+        <button class="tab-btn" data-tab="sauvegardes" role="tab" aria-selected="false">
+            <span class="tab-icon">💾</span> Sauvegardes
+        </button>
+    </div>
+
+    <!-- ============================================
+         TAB 1: JARDINS
+         ============================================ -->
+    <div class="tab-panel active" id="tab-jardins" role="tabpanel">
+        <!-- Existing Gardens -->
+        {% for gd in garden_data %}
+        <div class="card">
+            <div class="card-header d-flex align-center justify-between">
+                <h2 class="card-title">🌿 {{ gd.garden.garden_code }} — {{ gd.garden.name }}</h2>
+                <div class="d-flex gap-sm">
+                    <button class="btn btn-sm btn-secondary" onclick="toggleEditGarden('{{ gd.garden.id }}')">
+                        ✏️ {{ i18n.buttons.edit }}
+                    </button>
+                    <form method="POST" action="{{ url_for('settings.garden_delete') }}" style="display:inline">
+                        <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
+                        <button type="submit" class="btn btn-sm btn-danger"
+                            data-confirm="Êtes-vous sûr de vouloir supprimer ce jardin ?">
+                            🗑️ {{ i18n.buttons.delete }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Stats -->
+                <div class="stats-grid stats-grid-3">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ gd.stats.beds }}</span>
+                        <span class="stat-label">{{ i18n.stats.beds }}</span>
+                    </div>
+                    <div class="stat-item stat-active">
+                        <span class="stat-value" id="active-count-{{ gd.garden.id }}">{{ gd.stats.active_sub_beds
+                            }}</span>
+                        <span class="stat-label">{{ i18n.stats.active }}</span>
+                    </div>
+                    <div class="stat-item stat-reserve">
+                        <span class="stat-value" id="reserve-count-{{ gd.garden.id }}">{{ gd.stats.reserve_sub_beds
+                            }}</span>
+                        <span class="stat-label">{{ i18n.stats.reserve }}</span>
+                    </div>
+                </div>
+
+                <div class="garden-meta mb-md">
+                    <span class="meta-item">📏 {{ gd.garden.bed_length_m }}m × {{ gd.garden.bed_width_m }}m</span>
+                    <span class="meta-item">🔲 {{ gd.garden.sub_beds_per_bed }} sous-planches/planche</span>
+                    <span class="meta-item">📐 {{ (gd.garden.bed_length_m / gd.garden.sub_beds_per_bed)|round(1) }}m par
+                        sous-planche</span>
+                </div>
+
+                <!-- Edit Form (hidden by default) -->
+                <div class="edit-garden-form" id="edit-garden-{{ gd.garden.id }}" style="display:none">
+                    <form method="POST" action="{{ url_for('settings.garden_edit') }}">
+                        <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
+                        <div class="form-row form-row-4">
+                            <div class="form-group">
+                                <label class="form-label">{{ i18n.labels.garden_name }}</label>
+                                <input type="text" name="name" class="form-input" value="{{ gd.garden.name }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ i18n.labels.bed_count }}</label>
+                                <input type="number" name="beds" class="form-input" value="{{ gd.garden.beds }}" min="1"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ i18n.labels.bed_length }}</label>
+                                <input type="number" name="bed_length_m" class="form-input"
+                                    value="{{ gd.garden.bed_length_m }}" step="0.1" min="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ i18n.labels.bed_width }}</label>
+                                <input type="number" name="bed_width_m" class="form-input"
+                                    value="{{ gd.garden.bed_width_m }}" step="0.1" min="0.1" required>
+                            </div>
+                        </div>
+                        <div class="form-row form-row-4 mt-md">
+                            <div class="form-group">
+                                <label class="form-label">{{ i18n.labels.sub_beds_per_bed }}</label>
+                                <input type="number" name="sub_beds_per_bed" class="form-input"
+                                    value="{{ gd.garden.sub_beds_per_bed }}" min="1" required>
+                            </div>
+                            <div class="form-group" style="align-self: end">
+                                <button type="submit" class="btn btn-primary">{{ i18n.buttons.save }}</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Sub-bed Reserve Grid -->
+                <div class="sub-bed-section mt-md">
+                    <h3 class="sub-bed-section-title">
+                        Sous-planches — Actives / Réserve
+                        <button class="btn btn-sm btn-secondary" onclick="toggleSubBedGrid('{{ gd.garden.id }}')">
+                            Afficher/Masquer la grille
+                        </button>
+                    </h3>
+                    <div class="sub-bed-grid-container" id="sub-bed-grid-{{ gd.garden.id }}" style="display:none">
+                        <div class="sub-bed-grid">
+                            {% set ns = namespace(current_bed=0) %}
+                            {% for sb in gd.sub_beds %}
+                            {% if sb.bed_number != ns.current_bed %}
+                            {% if ns.current_bed != 0 %}</div>{% endif %}
+                        {% set ns.current_bed = sb.bed_number %}
+                        <div class="sub-bed-row">
+                            <span class="sub-bed-label">P{{ '%02d'|format(sb.bed_number) }}</span>
+                            {% endif %}
+                            <label class="sub-bed-cell {% if sb.is_reserve %}is-reserve{% endif %}"
+                                title="P{{ '%02d'|format(sb.bed_number) }}-S{{ sb.sub_bed_position }}">
+                                <input type="checkbox" data-sub-bed-id="{{ sb.id }}" data-garden-id="{{ gd.garden.id }}"
+                                    {% if sb.is_reserve %}checked{% endif %} onchange="toggleReserve(this)">
+                                <span class="sub-bed-name">S{{ sb.sub_bed_position }}</span>
+                                <span class="sub-bed-status">{% if sb.is_reserve %}R{% else %}A{% endif %}</span>
+                            </label>
+                            {% endfor %}
+                            {% if gd.sub_beds %}
+                        </div>{% endif %}
+                    </div>
+                    <p class="form-hint mt-sm">Cochez une case pour mettre la sous-planche en réserve. Décochez pour la
+                        remettre en active.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Add Garden Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">➕ {{ i18n.buttons.add_garden }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.garden_add') }}">
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.garden_code }}</label>
+                        <input type="text" name="garden_code" class="form-input" placeholder="G3" required
+                            pattern="[A-Za-z0-9]+" title="Lettres et chiffres uniquement">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.garden_name }}</label>
+                        <input type="text" name="name" class="form-input" placeholder="Nouveau Jardin" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.bed_count }}</label>
+                        <input type="number" name="beds" class="form-input" placeholder="10" min="1" required>
+                    </div>
+                </div>
+                <div class="form-row form-row-3 mt-md">
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.bed_length }}</label>
+                        <input type="number" name="bed_length_m" class="form-input" placeholder="25.0" step="0.1"
+                            min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.bed_width }}</label>
+                        <input type="number" name="bed_width_m" class="form-input" value="1.0" step="0.1" min="0.1"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.sub_beds_per_bed }}</label>
+                        <input type="number" name="sub_beds_per_bed" class="form-input" placeholder="2" min="1"
+                            required>
+                    </div>
+                </div>
+                <div class="mt-md">
+                    <button type="submit" class="btn btn-accent">
+                        <span class="btn-icon">➕</span> {{ i18n.buttons.add_garden }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+         TAB 2: CULTURES
+         ============================================ -->
+<div class="tab-panel" id="tab-cultures" role="tabpanel">
+    <!-- Crops grouped by category -->
+    {% for cat, cat_crops in crops_by_category.items() %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title d-flex align-center gap-sm">
+                <span class="cat-badge cat-{{ cat|lower }}">{{ cat }}</span>
+                <span class="text-muted">({{ cat_crops|length }} cultures)</span>
+            </h2>
+        </div>
+        <div class="card-body">
+            {% if cat_crops %}
+            <div class="crops-list">
+                {% for crop in cat_crops %}
+                <div class="crop-item">
+                    <span class="crop-name">{{ crop.crop_name }}</span>
+                    <div class="crop-actions d-flex gap-sm">
+                        <!-- Category change -->
+                        <form method="POST" action="{{ url_for('settings.crop_category') }}"
+                            class="d-flex gap-sm align-center">
+                            <input type="hidden" name="crop_id" value="{{ crop.id }}">
+                            <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                                {% for c in categories %}
+                                <option value="{{ c }}" {% if c==crop.category %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        <!-- Delete -->
+                        <form method="POST" action="{{ url_for('settings.crop_delete') }}" style="display:inline">
+                            <input type="hidden" name="crop_id" value="{{ crop.id }}">
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                data-confirm="{{ i18n.confirm.delete_crop }}">
+                                🗑️
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">Aucune culture dans cette catégorie.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Add Crop Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">➕ {{ i18n.buttons.add_crop }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.crop_add') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.crop_name }}</label>
+                        <input type="text" name="crop_name" class="form-input" placeholder="Nom de la culture" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ i18n.labels.crop_category }}</label>
+                        <select name="category" class="form-select" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-md">
+                    <button type="submit" class="btn btn-accent">
+                        <span class="btn-icon">➕</span> {{ i18n.buttons.add_crop }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+         TAB 3: SÉQUENCE DE ROTATION
+         ============================================ -->
+<div class="tab-panel" id="tab-rotation" role="tabpanel">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">🔄 {{ i18n.labels.rotation_sequence }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.rotation_save') }}" id="rotationForm">
+                <div class="rotation-list" id="rotationList">
+                    {% for step in rotation %}
+                    <div class="rotation-item" data-category="{{ step.category }}">
+                        <span class="rotation-position">{{ step.position }}</span>
+                        <span class="cat-badge cat-{{ step.category|lower }}">{{ step.category }}</span>
+                        <input type="hidden" name="categories" value="{{ step.category }}">
+                        <div class="rotation-arrows">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="moveRotation(this, -1)" {%
+                                if loop.first %}disabled{% endif %}>
+                                ▲
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="moveRotation(this, 1)" {% if
+                                loop.last %}disabled{% endif %}>
+                                ▼
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Visual Preview -->
+                <div class="rotation-preview mt-lg" id="rotationPreview">
+                    <span class="rotation-preview-label">Aperçu :</span>
+                    <div class="rotation-preview-chain" id="rotationPreviewChain">
+                        {% for step in rotation %}
+                        <span class="cat-badge cat-{{ step.category|lower }}">{{ step.category }}</span>
+                        {% if not loop.last %}<span class="rotation-arrow">→</span>{% endif %}
+                        {% endfor %}
+                        <span class="rotation-arrow">→</span>
+                        <span class="rotation-wrap">(retour à {{ rotation[0].category }})</span>
+                    </div>
+                </div>
+
+                <div class="mt-lg">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">💾</span> {{ i18n.buttons.save }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+         TAB 4: CYCLES PAR AN
+         ============================================ -->
+<div class="tab-panel" id="tab-cycles" role="tabpanel">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">📅 {{ i18n.labels.cycles_per_year }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.cycles_save') }}">
+                <div class="form-group" style="max-width: 300px">
+                    <label class="form-label">Nombre de cycles par an</label>
+                    <select name="cycles_per_year" class="form-select" id="cyclesSelect"
+                        onchange="updateCyclePreview()">
+                        <option value="1" {% if cycles_per_year=='1' %}selected{% endif %}>1 cycle par an</option>
+                        <option value="2" {% if cycles_per_year=='2' %}selected{% endif %}>2 cycles par an</option>
+                        <option value="3" {% if cycles_per_year=='3' %}selected{% endif %}>3 cycles par an</option>
+                        <option value="4" {% if cycles_per_year=='4' %}selected{% endif %}>4 cycles par an</option>
+                    </select>
+                </div>
+
+                <!-- Cycle Format Preview -->
+                <div class="cycle-preview mt-lg" id="cyclePreview">
+                    <span class="cycle-preview-label">Format des identifiants :</span>
+                    <div class="cycle-preview-examples" id="cyclePreviewExamples">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <div class="mt-lg">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">💾</span> {{ i18n.buttons.save }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+         TAB 5: SAUVEGARDES
+         ============================================ -->
+<div class="tab-panel" id="tab-sauvegardes" role="tabpanel">
+    <div class="card">
+        <div class="card-header d-flex align-center justify-between">
+            <h2 class="card-title">💾 {{ i18n.glossary.backup }}</h2>
+            <form method="POST" action="{{ url_for('settings.backup_create') }}" style="display:inline">
+                <button type="submit" class="btn btn-accent">
+                    <span class="btn-icon">📦</span> Créer une sauvegarde
+                </button>
+            </form>
+        </div>
+        <div class="card-body">
+            {% if backups %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fichier</th>
+                            <th>Date</th>
+                            <th>Raison</th>
+                            <th>Taille</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for backup in backups %}
+                        <tr>
+                            <td><code>{{ backup.filename }}</code></td>
+                            <td>{{ backup.timestamp }}</td>
+                            <td><span class="cat-badge cat-reserve">{{ backup.reason }}</span></td>
+                            <td>{{ backup.size_display }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('settings.backup_restore') }}"
+                                    style="display:inline">
+                                    <input type="hidden" name="filename" value="{{ backup.filename }}">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="{{ i18n.confirm.restore_backup }}">
+                                        🔄 {{ i18n.buttons.restore }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-state-icon">📂</span>
+                <p>Aucune sauvegarde disponible.</p>
+                <p class="text-muted">Cliquez sur « Créer une sauvegarde » pour en créer une.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ========================================
+    // Tab Switching
+    // ========================================
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            // Deactivate all tabs
+            document.querySelectorAll('.tab-btn').forEach(function (b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('.tab-panel').forEach(function (p) {
+                p.classList.remove('active');
+            });
+            // Activate clicked tab
+            this.classList.add('active');
+            this.setAttribute('aria-selected', 'true');
+            var tabId = 'tab-' + this.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+
+            // Save to URL hash
+            window.location.hash = this.getAttribute('data-tab');
+        });
+    });
+
+    // Restore tab from URL hash
+    (function () {
+        var hash = window.location.hash.replace('#', '');
+        if (hash) {
+            var btn = document.querySelector('.tab-btn[data-tab="' + hash + '"]');
+            if (btn) btn.click();
+        }
+    })();
+
+    // ========================================
+    // Garden: Toggle edit form
+    // ========================================
+    function toggleEditGarden(gardenId) {
+        var form = document.getElementById('edit-garden-' + gardenId);
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // ========================================
+    // Garden: Toggle sub-bed grid
+    // ========================================
+    function toggleSubBedGrid(gardenId) {
+        var grid = document.getElementById('sub-bed-grid-' + gardenId);
+        grid.style.display = grid.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // ========================================
+    // Sub-bed reserve toggle (AJAX)
+    // ========================================
+    function toggleReserve(checkbox) {
+        var subBedId = checkbox.getAttribute('data-sub-bed-id');
+        var gardenId = checkbox.getAttribute('data-garden-id');
+        var isReserve = checkbox.checked ? '1' : '0';
+
+        var formData = new FormData();
+        formData.append('sub_bed_id', subBedId);
+        formData.append('is_reserve', isReserve);
+
+        fetch('{{ url_for("settings.sub_bed_toggle") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    // Update counts
+                    document.getElementById('active-count-' + gardenId).textContent = data.active;
+                    document.getElementById('reserve-count-' + gardenId).textContent = data.reserve;
+
+                    // Update cell styling
+                    var cell = checkbox.closest('.sub-bed-cell');
+                    var statusSpan = cell.querySelector('.sub-bed-status');
+                    if (checkbox.checked) {
+                        cell.classList.add('is-reserve');
+                        statusSpan.textContent = 'R';
+                    } else {
+                        cell.classList.remove('is-reserve');
+                        statusSpan.textContent = 'A';
+                    }
+                } else {
+                    alert('Erreur: ' + (data.error || 'Inconnue'));
+                    checkbox.checked = !checkbox.checked;
+                }
+            })
+            .catch(function () {
+                alert('Erreur de connexion');
+                checkbox.checked = !checkbox.checked;
+            });
+    }
+
+    // ========================================
+    // Rotation: Move up/down
+    // ========================================
+    function moveRotation(button, direction) {
+        var item = button.closest('.rotation-item');
+        var list = document.getElementById('rotationList');
+        var items = Array.from(list.querySelectorAll('.rotation-item'));
+        var index = items.indexOf(item);
+
+        if (direction === -1 && index > 0) {
+            list.insertBefore(item, items[index - 1]);
+        } else if (direction === 1 && index < items.length - 1) {
+            list.insertBefore(items[index + 1], item);
+        }
+
+        // Re-number positions and update arrows
+        updateRotationDisplay();
+    }
+
+    function updateRotationDisplay() {
+        var list = document.getElementById('rotationList');
+        var items = Array.from(list.querySelectorAll('.rotation-item'));
+
+        items.forEach(function (item, i) {
+            item.querySelector('.rotation-position').textContent = i + 1;
+            var arrows = item.querySelectorAll('.rotation-arrows .btn');
+            arrows[0].disabled = (i === 0);
+            arrows[1].disabled = (i === items.length - 1);
+        });
+
+        // Update preview
+        var previewChain = document.getElementById('rotationPreviewChain');
+        var html = '';
+        items.forEach(function (item, i) {
+            var cat = item.getAttribute('data-category');
+            html += '<span class="cat-badge cat-' + cat.toLowerCase() + '">' + cat + '</span>';
+            if (i < items.length - 1) {
+                html += '<span class="rotation-arrow">→</span>';
+            }
+        });
+        var firstCat = items[0].getAttribute('data-category');
+        html += '<span class="rotation-arrow">→</span>';
+        html += '<span class="rotation-wrap">(retour à ' + firstCat + ')</span>';
+        previewChain.innerHTML = html;
+    }
+
+    // ========================================
+    // Cycles: Preview
+    // ========================================
+    function updateCyclePreview() {
+        var select = document.getElementById('cyclesSelect');
+        var val = select.value;
+        var preview = document.getElementById('cyclePreviewExamples');
+        var year = new Date().getFullYear();
+
+        var formats = {
+            '1': [year.toString()],
+            '2': [year + 'A', year + 'B'],
+            '3': [year + 'A', year + 'B', year + 'C'],
+            '4': [year + 'Q1', year + 'Q2', year + 'Q3', year + 'Q4'],
+        };
+
+        var examples = formats[val] || [];
+        preview.innerHTML = examples.map(function (ex) {
+            return '<span class="cycle-example">' + ex + '</span>';
+        }).join('<span class="rotation-arrow">,</span> ');
+    }
+
+    // Initialize cycle preview on load
+    updateCyclePreview();
+</script>
 {% endblock %}

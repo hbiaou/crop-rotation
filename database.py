@@ -353,3 +353,248 @@ def get_garden_stats(garden_id):
         'reserve_sub_beds': reserve_sub_beds,
         'beds': garden['beds'],
     }
+
+
+# ========================================
+# Garden CRUD
+# ========================================
+
+def create_garden(garden_code, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed):
+    """Create a new garden and auto-generate its sub-beds. Returns garden_id or None."""
+    conn = get_db()
+    try:
+        total = beds * sub_beds_per_bed
+        conn.execute(
+            """INSERT INTO gardens (garden_code, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed, active_sub_beds)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (garden_code, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed, total)
+        )
+        garden_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        # Auto-generate sub-beds (all active by default)
+        for bed in range(1, beds + 1):
+            for pos in range(1, sub_beds_per_bed + 1):
+                conn.execute(
+                    "INSERT INTO sub_beds (garden_id, bed_number, sub_bed_position, is_reserve) VALUES (?, ?, ?, 0)",
+                    (garden_id, bed, pos)
+                )
+        conn.commit()
+        return garden_id
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def update_garden(garden_id, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed):
+    """Update garden config and regenerate sub-beds if bed/sub-bed counts changed."""
+    conn = get_db()
+    try:
+        old = conn.execute("SELECT * FROM gardens WHERE id = ?", (garden_id,)).fetchone()
+        if not old:
+            return False
+
+        # Update garden record
+        conn.execute(
+            """UPDATE gardens SET name=?, beds=?, bed_length_m=?, bed_width_m=?, sub_beds_per_bed=?
+               WHERE id=?""",
+            (name, beds, bed_length_m, bed_width_m, sub_beds_per_bed, garden_id)
+        )
+
+        # If bed structure changed, regenerate sub-beds
+        if old['beds'] != beds or old['sub_beds_per_bed'] != sub_beds_per_bed:
+            # Delete sub-beds not referenced in cycle_plans
+            conn.execute(
+                """DELETE FROM sub_beds WHERE garden_id = ?
+                   AND id NOT IN (SELECT DISTINCT sub_bed_id FROM cycle_plans)""",
+                (garden_id,)
+            )
+            # Add missing sub-beds
+            for bed in range(1, beds + 1):
+                for pos in range(1, sub_beds_per_bed + 1):
+                    try:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO sub_beds (garden_id, bed_number, sub_bed_position, is_reserve) VALUES (?, ?, ?, 0)",
+                            (garden_id, bed, pos)
+                        )
+                    except sqlite3.IntegrityError:
+                        pass
+
+        # Recount active sub-beds
+        _recount_active(conn, garden_id)
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_garden(garden_id):
+    """Delete a garden. Only allowed if no cycle_plans reference it. Returns (success, error_msg)."""
+    conn = get_db()
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM cycle_plans WHERE garden_id = ?", (garden_id,)
+        ).fetchone()[0]
+        if count > 0:
+            return False, "Ce jardin est utilisé dans des cycles existants."
+
+        conn.execute("DELETE FROM sub_beds WHERE garden_id = ?", (garden_id,))
+        conn.execute("DELETE FROM gardens WHERE id = ?", (garden_id,))
+        conn.commit()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def toggle_sub_bed_reserve(sub_bed_id, is_reserve):
+    """Toggle a sub-bed's reserve status and recount garden active_sub_beds."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE sub_beds SET is_reserve = ? WHERE id = ?",
+            (1 if is_reserve else 0, sub_bed_id)
+        )
+        # Get garden_id for recount
+        sb = conn.execute("SELECT garden_id FROM sub_beds WHERE id = ?", (sub_bed_id,)).fetchone()
+        if sb:
+            _recount_active(conn, sb['garden_id'])
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def _recount_active(conn, garden_id):
+    """Recalculate gardens.active_sub_beds from actual sub_beds table. Uses existing connection."""
+    active = conn.execute(
+        "SELECT COUNT(*) FROM sub_beds WHERE garden_id = ? AND is_reserve = 0",
+        (garden_id,)
+    ).fetchone()[0]
+    conn.execute(
+        "UPDATE gardens SET active_sub_beds = ? WHERE id = ?",
+        (active, garden_id)
+    )
+
+
+# ========================================
+# Crop CRUD
+# ========================================
+
+def create_crop(crop_name, category):
+    """Create a new crop. Returns crop_id or None if name already exists."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO crops (crop_name, category) VALUES (?, ?)",
+            (crop_name.strip(), category)
+        )
+        crop_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+        return crop_id
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def delete_crop(crop_id):
+    """Delete a crop. Only allowed if not used in cycle_plans. Returns (success, error_msg)."""
+    conn = get_db()
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM cycle_plans WHERE planned_crop_id = ? OR actual_crop_id = ?",
+            (crop_id, crop_id)
+        ).fetchone()[0]
+        if count > 0:
+            return False, "Cette culture est utilisée dans un cycle existant et ne peut pas être supprimée."
+
+        conn.execute("DELETE FROM crops WHERE id = ?", (crop_id,))
+        conn.commit()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def update_crop_category(crop_id, new_category):
+    """Reassign a crop to a different category."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE crops SET category = ? WHERE id = ?",
+            (new_category, crop_id)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+# ========================================
+# Rotation Sequence
+# ========================================
+
+def save_rotation_sequence(ordered_categories):
+    """Replace the rotation sequence with new ordered list of categories."""
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM rotation_sequence")
+        for i, category in enumerate(ordered_categories, start=1):
+            conn.execute(
+                "INSERT INTO rotation_sequence (position, category) VALUES (?, ?)",
+                (i, category)
+            )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+# ========================================
+# Settings
+# ========================================
+
+def update_setting(key, value):
+    """Insert or update a setting."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            (key, value)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_categories():
+    """Get the list of valid categories from rotation_sequence."""
+    conn = get_db()
+    cats = conn.execute(
+        "SELECT category FROM rotation_sequence ORDER BY position"
+    ).fetchall()
+    conn.close()
+    return [row['category'] for row in cats]
