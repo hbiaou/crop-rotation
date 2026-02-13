@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ i18n.pages.home_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ i18n.pages.home_title }}</h1>
+    <p class="page-subtitle">Gestion de la rotation des cultures pour le maraîchage</p>
+</div>
+
+<!-- Garden & Cycle Selectors -->
+<div class="card selector-card">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('main.index') }}" class="selector-form" id="selectorForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="garden_id" class="form-label">
+                        <span class="label-icon">🌿</span> {{ i18n.labels.select_garden }}
+                    </label>
+                    <select name="garden_id" id="garden_id" class="form-select"
+                        onchange="document.getElementById('selectorForm').submit()">
+                        {% for garden in gardens %}
+                        <option value="{{ garden.id }}" {% if garden.id==selected_garden_id %}selected{% endif %}>
+                            {{ garden.garden_code }} — {{ garden.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cycle" class="form-label">
+                        <span class="label-icon">🔄</span> {{ i18n.labels.select_cycle }}
+                    </label>
+                    <select name="cycle" id="cycle" class="form-select">
+                        {% if cycles %}
+                        {% for cycle in cycles %}
+                        <option value="{{ cycle }}" {% if cycle==selected_cycle %}selected{% endif %}>
+                            {{ cycle }}
+                        </option>
+                        {% endfor %}
+                        {% else %}
+                        <option value="" disabled selected>{{ i18n.labels.no_cycle }}</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="card actions-card">
+    <div class="card-header">
+        <h2 class="card-title">Actions</h2>
+    </div>
+    <div class="card-body">
+        <div class="action-buttons">
+            <a href="#" class="btn btn-primary btn-lg">
+                <span class="btn-icon">🚀</span>
+                {{ i18n.buttons.bootstrap }}
+            </a>
+            <a href="#" class="btn btn-secondary btn-lg {% if not has_cycles %}btn-disabled{% endif %}" {% if not
+                has_cycles %}aria-disabled="true" tabindex="-1" {% endif %}>
+                <span class="btn-icon">🗺️</span>
+                {{ i18n.buttons.view_map }}
+            </a>
+            <a href="#" class="btn btn-accent btn-lg">
+                <span class="btn-icon">⚡</span>
+                {{ i18n.buttons.generate_next }}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Garden Statistics -->
+{% if stats %}
+<div class="card stats-card">
+    <div class="card-header">
+        <h2 class="card-title">
+            📊 {{ stats.garden.garden_code }} — {{ stats.garden.name }}
+        </h2>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-value">{{ stats.beds }}</span>
+                <span class="stat-label">{{ i18n.stats.beds }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ stats.total_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.sub_beds }}</span>
+            </div>
+            <div class="stat-item stat-active">
+                <span class="stat-value">{{ stats.active_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.active }}</span>
+            </div>
+            <div class="stat-item stat-reserve">
+                <span class="stat-value">{{ stats.reserve_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.reserve }}</span>
+            </div>
+        </div>
+
+        <div class="garden-meta">
+            <span class="meta-item">📏 {{ stats.garden.bed_length_m }}m × {{ stats.garden.bed_width_m }}m</span>
+            <span class="meta-item">🔲 {{ stats.garden.sub_beds_per_bed }} {{ i18n.stats.sub_beds }}/{{
+                i18n.glossary.bed | lower }}</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

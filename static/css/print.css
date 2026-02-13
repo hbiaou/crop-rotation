@@ -1,0 +1,107 @@
+/**
+ * print.css — Print-optimized styles for A4 landscape output.
+ * Used for @media print rendering of garden maps.
+ */
+
+@media print {
+    /* Page setup: A4 landscape */
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    /* Hide non-essential elements */
+    .navbar,
+    .footer,
+    .flash-messages,
+    .action-buttons,
+    .selector-card,
+    .nav-toggle,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Reset colors for print */
+    body {
+        background: white !important;
+        color: black !important;
+        font-size: 10pt;
+        font-family: 'Inter', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .main-content {
+        padding: 0 !important;
+    }
+
+    /* Card styles for print */
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+        margin-bottom: 5mm;
+    }
+
+    /* Table styles for print */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+    }
+
+    th, td {
+        border: 1px solid #333;
+        padding: 3px 5px;
+    }
+
+    th {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Category colors — preserved for print */
+    .cat-feuille { background-color: #4CAF50 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-graine { background-color: #FFB300 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-racine { background-color: #00897B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-fruit { background-color: #D32F2F !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-couverture { background-color: #7B1FA2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-reserve { background-color: #E0E0E0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    /* Page title for print */
+    .print-title {
+        display: block !important;
+        text-align: center;
+        font-size: 14pt;
+        font-weight: 700;
+        margin-bottom: 5mm;
+    }
+
+    /* Legend */
+    .legend {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 5mm;
+        font-size: 8pt;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border: 1px solid #333;
+    }
+}

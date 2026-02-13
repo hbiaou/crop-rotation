@@ -1,0 +1,75 @@
+{
+  "rotation_sequence": [
+    {"position": 1, "category": "Feuille"},
+    {"position": 2, "category": "Graine"},
+    {"position": 3, "category": "Racine"},
+    {"position": 4, "category": "Fruit"},
+    {"position": 5, "category": "Couverture"}
+  ],
+  "crops": [
+    {"crop_name": "Choux", "category": "Feuille"},
+    {"crop_name": "Laitue", "category": "Feuille"},
+    {"crop_name": "Crincrin", "category": "Feuille"},
+    {"crop_name": "Amaranthe", "category": "Feuille"},
+    {"crop_name": "Maïs", "category": "Graine"},
+    {"crop_name": "Lentille", "category": "Graine"},
+    {"crop_name": "Haricot-Vert", "category": "Graine"},
+    {"crop_name": "Tournesol", "category": "Graine"},
+    {"crop_name": "Sésame", "category": "Graine"},
+    {"crop_name": "Carotte", "category": "Racine"},
+    {"crop_name": "Oignon", "category": "Racine"},
+    {"crop_name": "Patate", "category": "Racine"},
+    {"crop_name": "Ail", "category": "Racine"},
+    {"crop_name": "Gombo", "category": "Fruit"},
+    {"crop_name": "Piment", "category": "Fruit"},
+    {"crop_name": "Tomate", "category": "Fruit"},
+    {"crop_name": "Concombre", "category": "Fruit"},
+    {"crop_name": "Pastèque", "category": "Fruit"},
+    {"crop_name": "Fraise", "category": "Fruit"},
+    {"crop_name": "Crotalaria", "category": "Couverture"},
+    {"crop_name": "Aeschynomene", "category": "Couverture"},
+    {"crop_name": "Tithonia", "category": "Couverture"},
+    {"crop_name": "Mucuna", "category": "Couverture"}
+  ],
+  "distribution_defaults": {
+    "G1": {
+      "Feuille": {"Choux": 27, "Laitue": 27, "Crincrin": 23, "Amaranthe": 23},
+      "Graine": {"Maïs": 23, "Lentille": 18, "Haricot-Vert": 23, "Tournesol": 18, "Sésame": 18},
+      "Racine": {"Carotte": 23, "Oignon": 27, "Patate": 27, "Ail": 23},
+      "Fruit": {"Gombo": 23, "Piment": 23, "Tomate": 27, "Concombre": 14, "Pastèque": 9, "Fraise": 4},
+      "Couverture": {"Crotalaria": 25, "Aeschynomene": 25, "Tithonia": 25, "Mucuna": 25}
+    },
+    "G2": {
+      "Feuille": {"Choux": 22, "Laitue": 22, "Crincrin": 22, "Amaranthe": 34},
+      "Graine": {"Maïs": 22, "Lentille": 22, "Haricot-Vert": 22, "Tournesol": 22, "Sésame": 12},
+      "Racine": {"Carotte": 22, "Oignon": 34, "Patate": 34, "Ail": 10},
+      "Fruit": {"Gombo": 22, "Piment": 22, "Tomate": 34, "Concombre": 11, "Pastèque": 11, "Fraise": 0},
+      "Couverture": {"Crotalaria": 20, "Aeschynomene": 20, "Tithonia": 30, "Mucuna": 30}
+    }
+  },
+  "settings": {
+    "cycles_per_year": 2
+  },
+  "gardens": [
+    {
+      "garden_code": "G1",
+      "name": "Grand Jardin",
+      "beds": 28,
+      "bed_length_m": 50.0,
+      "bed_width_m": 1.0,
+      "sub_beds_per_bed": 4,
+      "active_sub_beds": 110,
+      "reserve_sub_beds": 2
+    },
+    {
+      "garden_code": "G2",
+      "name": "G2",
+      "beds": 23,
+      "bed_length_m": 22.0,
+      "bed_width_m": 1.0,
+      "sub_beds_per_bed": 2,
+      "active_sub_beds": 45,
+      "reserve_sub_beds": 1
+    }
+  ]
+}
