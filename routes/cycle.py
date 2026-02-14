@@ -123,14 +123,44 @@ def _compute_auto_distribution(garden_id):
     beds_per_category = total_beds // num_categories
     remainder = total_beds % num_categories
 
-    # ── Step 1: Interleave categories across beds (round-robin) ──
-    # Instead of contiguous blocks (P1-P5 = Feuille, P6-P9 = Graine ...),
-    # cycle through categories: P1→Cat1, P2→Cat2, ..., P6→Cat1, P7→Cat2 ...
-    # This ensures consecutive beds have different categories.
+    # ── Step 1: Interleave categories across BEDS (round-robin) ──
+    # Group sub-beds by bed_number first, then assign one category per bed.
+    # When division is uneven, boundary beds split sub-beds across categories.
+    from collections import OrderedDict
+    beds_grouped = OrderedDict()
+    for sb in active_beds:
+        bn = sb['bed_number']
+        if bn not in beds_grouped:
+            beds_grouped[bn] = []
+        beds_grouped[bn].append(sb)
+
+    # Balanced sub-bed targets per category
+    target_per_cat = {}
+    base_count = total_beds // num_categories
+    cat_remainder = total_beds % num_categories
+    for i, cat in enumerate(categories):
+        target_per_cat[cat] = base_count + (1 if i < cat_remainder else 0)
+
+    # Round-robin at BED level, with spillover when a category is full
     cat_to_beds = {cat: [] for cat in categories}
-    for i, bed in enumerate(active_beds):
-        assigned_cat = categories[i % num_categories]
-        cat_to_beds[assigned_cat].append(bed)
+    cat_filled = {cat: 0 for cat in categories}
+
+    for bed_idx, bed_number in enumerate(beds_grouped):
+        sub_beds_list = beds_grouped[bed_number]
+        primary_cat = categories[bed_idx % num_categories]
+
+        for sb in sub_beds_list:
+            # Use primary category if it still has room
+            if cat_filled[primary_cat] < target_per_cat[primary_cat]:
+                cat_to_beds[primary_cat].append(sb)
+                cat_filled[primary_cat] += 1
+            else:
+                # Spill to next under-filled category
+                for cat in categories:
+                    if cat_filled[cat] < target_per_cat[cat]:
+                        cat_to_beds[cat].append(sb)
+                        cat_filled[cat] += 1
+                        break
 
     # ── Step 2: Within each category, distribute crops proportionally ──
     result = {}
