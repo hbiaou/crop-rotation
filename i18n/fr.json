@@ -137,5 +137,18 @@
         "validation_error": "Chaque sous-planche doit avoir une catégorie.",
         "expand_all": "Tout déplier",
         "collapse_all": "Tout replier"
+    },
+    "distribution": {
+        "title": "Répartition des cultures",
+        "subtitle": "{garden} ({code}) — Cycle {cycle}",
+        "hint": "💡 Ajustez les pourcentages pour chaque culture. Le total par catégorie doit correspondre au nombre de planches disponibles.",
+        "save": "Enregistrer la répartition",
+        "back": "Retour",
+        "empty_category": "Aucune planche dans cette catégorie pour ce cycle.",
+        "crop": "Culture",
+        "percentage": "Pourcentage",
+        "setting": "Réglage",
+        "beds": "Planches",
+        "assigned": "affectées"
     }
 }

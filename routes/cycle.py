@@ -322,3 +322,50 @@ def api_auto_distribute(garden_id):
     result = _compute_auto_distribution(garden_id)
     # Convert keys to strings for JSON
     return jsonify({str(k): v for k, v in result.items()})
+
+
+# ========================================
+# Cycle Generation
+# ========================================
+
+@cycle_bp.route('/generate/<int:garden_id>', methods=['POST'])
+def generate_cycle(garden_id):
+    """Generate the next cycle for a garden.
+
+    Steps:
+    1. Save snapshot of current cycle's actuals
+    2. Generate next cycle (category rotation)
+    3. Redirect to distribution page for the new cycle
+    """
+    from utils.snapshots import save_snapshot
+    from rotation_engine import generate_next_cycle
+    from database import get_latest_cycle
+
+    garden = get_garden(garden_id)
+    if not garden:
+        flash("Jardin introuvable.", "error")
+        return redirect(url_for('main.index'))
+
+    # Get current cycle
+    current_cycle = get_latest_cycle(garden_id)
+    if not current_cycle:
+        flash("Aucun cycle existant. Veuillez d'abord effectuer le démarrage.", "warning")
+        return redirect(url_for('cycle.bootstrap_form', garden_id=garden_id))
+
+    # Step 1: Save snapshot of current cycle actuals
+    snapshot_file = save_snapshot(garden_id, current_cycle)
+    if snapshot_file:
+        flash(f"Snapshot sauvegardé : {snapshot_file}", "info")
+
+    # Step 2: Generate next cycle
+    new_cycle, error = generate_next_cycle(garden_id)
+    if error:
+        flash(f"Erreur lors de la génération : {error}", "error")
+        return redirect(url_for('main.index', garden_id=garden_id))
+
+    flash(f"Cycle {new_cycle} généré avec succès ! Ajustez la répartition ci-dessous.", "success")
+
+    # Step 3: Redirect to distribution page
+    return redirect(url_for('distribution.distribution_page',
+                            garden_id=garden_id, cycle=new_cycle))
+

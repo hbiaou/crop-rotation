@@ -1,6 +1,190 @@
 {% extends "base.html" %}
-{% block title %}{{ i18n.pages.distribution_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
+{% block title %}Répartition des cultures — {{ garden.name }} — {{ cycle }}{% endblock %}
+
 {% block content %}
-<h1>{{ i18n.pages.distribution_title }}</h1>
-<!-- Distribution adjustment will be implemented in a future session -->
+<div class="page-header">
+    <h1 class="page-title">{{ i18n.distribution.title }}</h1>
+    <p class="page-subtitle">{{ garden.name }} ({{ garden.garden_code }}) — Cycle {{ cycle }}</p>
+</div>
+
+<form method="post" action="{{ url_for('distribution.save_distribution', garden_id=garden.id, cycle=cycle) }}"
+    id="distributionForm">
+    <div class="distribution-toolbar">
+        <div class="toolbar-info">
+            <span class="badge badge-info">{{ i18n.distribution.hint }}</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">
+            <span class="btn-icon">💾</span> {{ i18n.distribution.save }}
+        </button>
+    </div>
+
+    {% for cat in category_data %}
+    <div class="card distribution-card category-{{ cat.category|lower }}">
+        <div class="card-header distribution-header cat-bg-{{ cat.category|lower }}">
+            <h2 class="card-title">
+                <span class="cat-icon">
+                    {% if cat.category == 'Feuille' %}🥬
+                    {% elif cat.category == 'Graine' %}🌾
+                    {% elif cat.category == 'Racine' %}🥕
+                    {% elif cat.category == 'Fruit' %}🍅
+                    {% elif cat.category == 'Couverture' %}🌿
+                    {% endif %}
+                </span>
+                {{ cat.category }}
+            </h2>
+            <div class="category-stats">
+                <span class="badge">{{ cat.total_beds }} planches</span>
+                <span class="badge validation-badge" id="validation-{{ cat.category }}">
+                    <span class="resolved-total" data-category="{{ cat.category }}">0</span> / {{ cat.total_beds }}
+                    {{ i18n.distribution.assigned }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body distribution-body">
+            {% if cat.total_beds == 0 %}
+            <p class="text-muted">{{ i18n.distribution.empty_category }}</p>
+            {% else %}
+            <table class="distribution-table">
+                <thead>
+                    <tr>
+                        <th>{{ i18n.distribution.crop }}</th>
+                        <th>{{ i18n.distribution.percentage }}</th>
+                        <th class="col-slider">{{ i18n.distribution.setting }}</th>
+                        <th>{{ i18n.distribution.beds }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for crop in cat.crops %}
+                    <tr class="distribution-row" data-category="{{ cat.category }}"
+                        data-total-beds="{{ cat.total_beds }}">
+                        <td class="crop-name">{{ crop.crop_name }}</td>
+                        <td class="pct-display">
+                            <input type="number" name="crop_{{ crop.crop_id }}" class="pct-input"
+                                data-crop-id="{{ crop.crop_id }}" data-category="{{ cat.category }}"
+                                value="{{ crop.percentage|round(1) }}" min="0" max="100" step="0.5">
+                            <span class="pct-symbol">%</span>
+                        </td>
+                        <td class="col-slider">
+                            <input type="range" class="pct-slider" data-crop-id="{{ crop.crop_id }}"
+                                data-category="{{ cat.category }}" value="{{ crop.percentage|round(1) }}" min="0"
+                                max="100" step="0.5">
+                        </td>
+                        <td class="resolved-count">
+                            <span class="bed-count" data-crop-id="{{ crop.crop_id }}"
+                                data-category="{{ cat.category }}">0</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="distribution-actions">
+        <a href="{{ url_for('main.index', garden_id=garden.id) }}" class="btn btn-secondary">
+            <span class="btn-icon">←</span> {{ i18n.distribution.back }}
+        </a>
+        <button type="submit" class="btn btn-primary btn-lg">
+            <span class="btn-icon">💾</span> {{ i18n.distribution.save }}
+        </button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // === Distribution Live Calculation ===
+
+        function resolveCount(percentage, totalBeds) {
+            return Math.floor(percentage * totalBeds / 100);
+        }
+
+        function updateCategory(category) {
+            var rows = document.querySelectorAll('.distribution-row[data-category="' + category + '"]');
+            if (rows.length === 0) return;
+
+            var totalBeds = parseInt(rows[0].dataset.totalBeds, 10);
+            var totalResolved = 0;
+            var counts = [];
+
+            rows.forEach(function (row) {
+                var input = row.querySelector('.pct-input');
+                var pct = parseFloat(input.value) || 0;
+                var count = resolveCount(pct, totalBeds);
+                counts.push({ row: row, count: count, pct: pct });
+                totalResolved += count;
+            });
+
+            // Rounding adjustment: add remainder to crops with largest fractional part
+            var remainder = totalBeds - totalResolved;
+            if (remainder > 0) {
+                var fracs = counts.map(function (c, i) {
+                    var raw = c.pct * totalBeds / 100;
+                    return { frac: raw - Math.floor(raw), idx: i };
+                }).sort(function (a, b) { return b.frac - a.frac; });
+
+                for (var j = 0; j < Math.min(remainder, fracs.length); j++) {
+                    counts[fracs[j].idx].count += 1;
+                }
+                totalResolved = totalBeds;
+            }
+
+            // Update displays
+            counts.forEach(function (c) {
+                var bedCountEl = c.row.querySelector('.bed-count');
+                if (bedCountEl) bedCountEl.textContent = c.count;
+            });
+
+            // Update category total
+            var actualTotal = counts.reduce(function (sum, c) { return sum + c.count; }, 0);
+            var totalEl = document.querySelector('.resolved-total[data-category="' + category + '"]');
+            if (totalEl) totalEl.textContent = actualTotal;
+
+            // Validation indicator
+            var badge = document.getElementById('validation-' + category);
+            if (badge) {
+                badge.classList.remove('badge-success', 'badge-danger', 'badge-warning');
+                if (actualTotal === totalBeds) {
+                    badge.classList.add('badge-success');
+                } else if (actualTotal > totalBeds) {
+                    badge.classList.add('badge-danger');
+                } else {
+                    badge.classList.add('badge-warning');
+                }
+            }
+        }
+
+        // Sync slider and input
+        document.querySelectorAll('.pct-input').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var cat = this.dataset.category;
+                var cropId = this.dataset.cropId;
+                var slider = document.querySelector('.pct-slider[data-crop-id="' + cropId + '"][data-category="' + cat + '"]');
+                if (slider) slider.value = this.value;
+                updateCategory(cat);
+            });
+        });
+
+        document.querySelectorAll('.pct-slider').forEach(function (slider) {
+            slider.addEventListener('input', function () {
+                var cat = this.dataset.category;
+                var cropId = this.dataset.cropId;
+                var input = document.querySelector('.pct-input[data-crop-id="' + cropId + '"][data-category="' + cat + '"]');
+                if (input) input.value = this.value;
+                updateCategory(cat);
+            });
+        });
+
+        // Initial calculation for all categories
+        var categories = new Set();
+        document.querySelectorAll('.distribution-row').forEach(function (row) {
+            categories.add(row.dataset.category);
+        });
+        categories.forEach(function (cat) {
+            updateCategory(cat);
+        });
+    });
+</script>
 {% endblock %}

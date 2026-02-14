@@ -6,7 +6,7 @@ Provides:
 """
 
 from flask import Blueprint, render_template, request
-from database import get_gardens, get_cycles, get_garden_stats
+from database import get_gardens, get_cycles, get_garden_stats, get_cycle_state
 
 main_bp = Blueprint('main', __name__)
 
@@ -24,6 +24,7 @@ def index():
     # Get cycles for selected garden
     cycles = []
     stats = None
+    cycle_state = None
     if selected_garden_id:
         cycles = get_cycles(selected_garden_id)
         stats = get_garden_stats(selected_garden_id)
@@ -34,6 +35,10 @@ def index():
 
     has_cycles = len(cycles) > 0
 
+    # Get cycle state for the selected cycle
+    if selected_garden_id and selected_cycle:
+        cycle_state = get_cycle_state(selected_garden_id, selected_cycle)
+
     return render_template(
         'index.html',
         gardens=gardens,
@@ -42,4 +47,5 @@ def index():
         selected_cycle=selected_cycle,
         has_cycles=has_cycles,
         stats=stats,
+        cycle_state=cycle_state,
     )

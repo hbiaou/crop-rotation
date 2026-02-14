@@ -48,6 +48,36 @@
     </div>
 </div>
 
+<!-- Cycle State Indicators -->
+{% if cycle_state and has_cycles %}
+<div class="card status-card">
+    <div class="card-header">
+        <h2 class="card-title">📋 État du cycle {{ selected_cycle }}</h2>
+    </div>
+    <div class="card-body">
+        <div class="status-indicators">
+            <div class="status-item {% if cycle_state.has_plans %}status-ok{% else %}status-missing{% endif %}">
+                <span class="status-icon">{% if cycle_state.has_plans %}✅{% else %}⬜{% endif %}</span>
+                <span class="status-label">Plan de rotation</span>
+            </div>
+            <div class="status-item {% if cycle_state.has_actual_data %}status-ok{% else %}status-missing{% endif %}">
+                <span class="status-icon">{% if cycle_state.has_actual_data %}✅{% else %}⬜{% endif %}</span>
+                <span class="status-label">Données réelles</span>
+            </div>
+            <div class="status-item {% if cycle_state.has_distribution %}status-ok{% else %}status-missing{% endif %}">
+                <span class="status-icon">{% if cycle_state.has_distribution %}✅{% else %}⬜{% endif %}</span>
+                <span class="status-label">Répartition</span>
+            </div>
+            <div
+                class="status-item {% if cycle_state.has_crop_assignments %}status-ok{% else %}status-missing{% endif %}">
+                <span class="status-icon">{% if cycle_state.has_crop_assignments %}✅{% else %}⬜{% endif %}</span>
+                <span class="status-label">Cultures affectées</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Action Buttons -->
 <div class="card actions-card">
     <div class="card-header">
@@ -64,11 +94,31 @@
                 <span class="btn-icon">🗺️</span>
                 {{ i18n.buttons.view_map }}
             </a>
-            <a href="#" class="btn btn-accent btn-lg">
-                <span class="btn-icon">⚡</span>
-                {{ i18n.buttons.generate_next }}
+
+            {% set can_generate = has_cycles and cycle_state and cycle_state.has_actual_data %}
+            <form method="post" action="{{ url_for('cycle.generate_cycle', garden_id=selected_garden_id) }}"
+                style="display: inline;"
+                onsubmit="return confirm('Générer le prochain cycle pour ce jardin ? Une sauvegarde automatique sera créée.');">
+                <button type="submit" class="btn btn-accent btn-lg {% if not can_generate %}btn-disabled{% endif %}" {%
+                    if not can_generate %}disabled{% endif %}>
+                    <span class="btn-icon">⚡</span>
+                    {{ i18n.buttons.generate_next }}
+                </button>
+            </form>
+
+            {% if has_cycles and cycle_state and cycle_state.has_plans and not cycle_state.has_distribution %}
+            <a href="{{ url_for('distribution.distribution_page', garden_id=selected_garden_id, cycle=selected_cycle) }}"
+                class="btn btn-primary btn-lg">
+                <span class="btn-icon">📊</span>
+                Ajuster la répartition
             </a>
+            {% endif %}
         </div>
+
+        {% if has_cycles and not can_generate %}
+        <p class="action-hint">💡 La génération du prochain cycle nécessite des données réelles (catégories et cultures
+            effectives) dans le cycle actuel.</p>
+        {% endif %}
     </div>
 </div>
 

@@ -638,3 +638,126 @@ def create_cycle_plans_batch(records):
         return False
     finally:
         conn.close()
+
+
+def get_latest_cycle(garden_id):
+    """Get the most recent cycle string for a garden, or None."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT DISTINCT cycle FROM cycle_plans WHERE garden_id = ? ORDER BY cycle DESC LIMIT 1",
+        (garden_id,)
+    ).fetchone()
+    conn.close()
+    return row['cycle'] if row else None
+
+
+def get_distribution_profiles(garden_id, cycle):
+    """Get distribution profiles for a garden+cycle.
+
+    Returns list of dicts with crop_id, target_percentage, crop_name, category.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT dp.*, c.crop_name, c.category
+           FROM distribution_profiles dp
+           JOIN crops c ON dp.crop_id = c.id
+           WHERE dp.garden_id = ? AND dp.cycle = ?
+           ORDER BY c.category, c.crop_name""",
+        (garden_id, cycle)
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def save_distribution_profiles(garden_id, cycle, profiles):
+    """Save distribution profiles for a garden+cycle.
+
+    Args:
+        garden_id: Garden ID
+        cycle: Cycle string
+        profiles: list of (crop_id, target_percentage) tuples
+
+    Returns:
+        True on success, False on failure.
+    """
+    conn = get_db()
+    try:
+        # Delete existing profiles for this garden+cycle
+        conn.execute(
+            "DELETE FROM distribution_profiles WHERE garden_id = ? AND cycle = ?",
+            (garden_id, cycle)
+        )
+        # Insert new profiles
+        conn.executemany(
+            """INSERT INTO distribution_profiles (garden_id, cycle, crop_id, target_percentage)
+               VALUES (?, ?, ?, ?)""",
+            [(garden_id, cycle, crop_id, pct) for crop_id, pct in profiles]
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_cycle_plans_view(garden_id, cycle):
+    """Get cycle_plans with joined data for a garden+cycle.
+
+    Returns list of rows with all cycle_plans_view columns.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT * FROM cycle_plans_view
+           WHERE garden_id = ? AND cycle = ?
+           ORDER BY bed_number, sub_bed_position""",
+        (garden_id, cycle)
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_cycle_state(garden_id, cycle):
+    """Check the state of a cycle (has data, has distribution, has crop assignments).
+
+    Returns dict with keys: has_plans, has_actual_data, has_distribution, has_crop_assignments.
+    """
+    conn = get_db()
+    try:
+        # Check if cycle_plans exist
+        plan_count = conn.execute(
+            "SELECT COUNT(*) FROM cycle_plans WHERE garden_id = ? AND cycle = ?",
+            (garden_id, cycle)
+        ).fetchone()[0]
+
+        # Check if any actual data exists
+        actual_count = conn.execute(
+            """SELECT COUNT(*) FROM cycle_plans
+               WHERE garden_id = ? AND cycle = ?
+                 AND (actual_category IS NOT NULL OR actual_crop_id IS NOT NULL)""",
+            (garden_id, cycle)
+        ).fetchone()[0]
+
+        # Check if distribution profiles exist
+        dist_count = conn.execute(
+            "SELECT COUNT(*) FROM distribution_profiles WHERE garden_id = ? AND cycle = ?",
+            (garden_id, cycle)
+        ).fetchone()[0]
+
+        # Check if crop assignments exist
+        crop_count = conn.execute(
+            """SELECT COUNT(*) FROM cycle_plans
+               WHERE garden_id = ? AND cycle = ?
+                 AND planned_crop_id IS NOT NULL""",
+            (garden_id, cycle)
+        ).fetchone()[0]
+
+        return {
+            'has_plans': plan_count > 0,
+            'has_actual_data': actual_count > 0,
+            'has_distribution': dist_count > 0,
+            'has_crop_assignments': crop_count > 0,
+        }
+    finally:
+        conn.close()
