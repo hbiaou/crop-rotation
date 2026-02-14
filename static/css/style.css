@@ -2194,11 +2194,18 @@ tbody tr:hover {
     flex: 1;
 }
 
-.map-actions {
+.map-toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-sm);
+    align-items: center;
+    padding: var(--spacing-sm) 0;
 }
 
+.map-toolbar form {
+    display: inline-flex;
+    margin: 0;
+}
 
 /* ── Legend ── */
 
@@ -2492,7 +2499,7 @@ tbody tr:hover {
         font-size: var(--font-size-lg);
     }
 
-    .map-actions {
+    .map-toolbar {
         justify-content: center;
     }
 

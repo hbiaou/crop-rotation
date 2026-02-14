@@ -114,11 +114,29 @@
                 Ajuster la répartition
             </a>
             {% endif %}
+
+            {% if has_cycles %}
+            <a href="{{ url_for('export.export_excel', garden_id=selected_garden_id, cycle=selected_cycle) }}"
+                class="btn btn-secondary btn-lg">
+                <span class="btn-icon">📥</span>
+                {{ i18n.buttons.export_excel }}
+            </a>
+            <a href="{{ url_for('export.export_excel_all', cycle=selected_cycle) }}" class="btn btn-secondary btn-lg">
+                <span class="btn-icon">📦</span>
+                Exporter tous les jardins
+            </a>
+            {% endif %}
         </div>
 
         {% if has_cycles and not can_generate %}
         <p class="action-hint">💡 La génération du prochain cycle nécessite des données réelles (catégories et cultures
             effectives) dans le cycle actuel.</p>
+        {% endif %}
+
+        {% if last_backup %}
+        <p class="action-hint" style="margin-top: var(--spacing-sm);">
+            💾 Dernière sauvegarde : {{ last_backup.timestamp }} ({{ last_backup.reason }})
+        </p>
         {% endif %}
     </div>
 </div>

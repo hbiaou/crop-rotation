@@ -13,8 +13,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from database import (
     get_gardens, get_cycles, get_garden_stats, get_cycle_state,
     get_garden, get_map_data, get_crops, get_categories,
-    update_cycle_plan_override
+    update_cycle_plan_override, has_overrides
 )
+from utils.backup import list_backups
 
 main_bp = Blueprint('main', __name__)
 
@@ -47,6 +48,10 @@ def index():
     if selected_garden_id and selected_cycle:
         cycle_state = get_cycle_state(selected_garden_id, selected_cycle)
 
+    # Get last backup date
+    backups = list_backups()
+    last_backup = backups[0] if backups else None
+
     return render_template(
         'index.html',
         gardens=gardens,
@@ -56,6 +61,7 @@ def index():
         has_cycles=has_cycles,
         stats=stats,
         cycle_state=cycle_state,
+        last_backup=last_backup,
     )
 
 
@@ -90,6 +96,9 @@ def map_view(garden_id, cycle):
     # Sub-bed count (columns) from garden config
     sub_beds_per_bed = garden['sub_beds_per_bed']
 
+    # Check if this cycle has overrides (for undo warning)
+    cycle_has_overrides = has_overrides(garden_id, cycle)
+
     return render_template(
         'map_view.html',
         garden=garden,
@@ -100,6 +109,7 @@ def map_view(garden_id, cycle):
         crops_by_category=crops_by_category,
         prev_cycle=prev_cycle,
         next_cycle=next_cycle,
+        has_overrides=cycle_has_overrides,
     )
 
 

@@ -31,12 +31,30 @@
             {% endif %}
         </div>
 
-        {# ── Action buttons ── #}
-        <div class="map-actions no-print">
+        {# ── Action Toolbar ── #}
+        <div class="map-toolbar no-print">
+            <a href="{{ url_for('export.export_excel', garden_id=garden['id'], cycle=cycle) }}"
+                class="btn btn-secondary btn-sm">
+                📥 Exporter (Excel)
+            </a>
             <a href="{{ url_for('main.print_view', garden_id=garden['id'], cycle=cycle) }}"
-                class="btn btn-outline btn-sm" target="_blank">
+                class="btn btn-secondary btn-sm" target="_blank">
                 🖨️ Imprimer
             </a>
+            <form method="POST" action="{{ url_for('cycle.finalize_cycle', garden_id=garden['id'], cycle=cycle) }}"
+                style="display: inline;"
+                onsubmit="return confirm('Finaliser ce cycle ? Un instantané sera sauvegardé dans l\'historique.');">
+                <button type="submit" class="btn btn-accent btn-sm">
+                    ✅ Finaliser le cycle
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('cycle.undo_cycle', garden_id=garden['id']) }}"
+                style="display: inline;"
+                onsubmit="return confirm('Êtes-vous sûr de vouloir annuler la génération du cycle {{ cycle }} ?{% if has_overrides %} Des remplacements ont été enregistrés et seront perdus.{% endif %}');">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    ⚠️ Annuler la génération
+                </button>
+            </form>
             <a href="{{ url_for('main.index', garden_id=garden['id'], cycle=cycle) }}" class="btn btn-outline btn-sm">
                 ← Accueil
             </a>

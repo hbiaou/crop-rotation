@@ -56,7 +56,8 @@
         "confirm_distribution": "Confirmer la répartition",
         "add_crop": "Ajouter une culture",
         "add_garden": "Ajouter un jardin",
-        "finalize_cycle": "Finaliser le cycle"
+        "finalize_cycle": "Finaliser le cycle",
+        "export_all": "Exporter tous les jardins"
     },
     "labels": {
         "select_garden": "Sélectionner un jardin",

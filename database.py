@@ -702,6 +702,62 @@ def save_distribution_profiles(garden_id, cycle, profiles):
         conn.close()
 
 
+def delete_cycle_plans(garden_id, cycle):
+    """Delete all cycle_plans records for a garden+cycle.
+
+    Used by Undo Generate (F8). Returns True on success, False on failure.
+    """
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM cycle_plans WHERE garden_id = ? AND cycle = ?",
+            (garden_id, cycle)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_distribution_profiles(garden_id, cycle):
+    """Delete all distribution_profiles for a garden+cycle.
+
+    Used by Undo Generate (F8). Returns True on success, False on failure.
+    """
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM distribution_profiles WHERE garden_id = ? AND cycle = ?",
+            (garden_id, cycle)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def has_overrides(garden_id, cycle):
+    """Check if any cycle_plans record has is_override=1 for a garden+cycle.
+
+    Returns True if overrides exist, False otherwise.
+    """
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM cycle_plans WHERE garden_id = ? AND cycle = ? AND is_override = 1",
+            (garden_id, cycle)
+        ).fetchone()
+        return row['cnt'] > 0 if row else False
+    finally:
+        conn.close()
+
+
 def get_cycle_plans_view(garden_id, cycle):
     """Get cycle_plans with joined data for a garden+cycle.
 

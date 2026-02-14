@@ -24,7 +24,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from database import (
     get_garden, get_sub_beds, get_crops, get_setting, get_rotation_sequence,
     get_cycle_plans_for_garden_cycle, create_cycle_plans_batch, update_setting,
-    get_categories, get_garden_stats
+    get_categories, get_garden_stats, get_latest_cycle,
+    delete_cycle_plans, delete_distribution_profiles, has_overrides
 )
 
 cycle_bp = Blueprint('cycle', __name__)
@@ -122,15 +123,21 @@ def _compute_auto_distribution(garden_id):
     beds_per_category = total_beds // num_categories
     remainder = total_beds % num_categories
 
-    # Assign categories to beds
-    result = {}
-    bed_index = 0
+    # ── Step 1: Interleave categories across beds (round-robin) ──
+    # Instead of contiguous blocks (P1-P5 = Feuille, P6-P9 = Graine ...),
+    # cycle through categories: P1→Cat1, P2→Cat2, ..., P6→Cat1, P7→Cat2 ...
+    # This ensures consecutive beds have different categories.
+    cat_to_beds = {cat: [] for cat in categories}
+    for i, bed in enumerate(active_beds):
+        assigned_cat = categories[i % num_categories]
+        cat_to_beds[assigned_cat].append(bed)
 
-    for cat_idx, category in enumerate(categories):
-        # First category gets remainder beds
-        count = beds_per_category + (remainder if cat_idx == 0 else 0)
-        cat_beds = active_beds[bed_index:bed_index + count]
-        bed_index += count
+    # ── Step 2: Within each category, distribute crops proportionally ──
+    result = {}
+    for category in categories:
+        cat_beds = cat_to_beds[category]
+        if not cat_beds:
+            continue
 
         # Get crop distribution for this category
         cat_crops = crops_by_cat.get(category, [])
@@ -369,3 +376,72 @@ def generate_cycle(garden_id):
     return redirect(url_for('distribution.distribution_page',
                             garden_id=garden_id, cycle=new_cycle))
 
+
+# ========================================
+# Undo Generate (F8)
+# ========================================
+
+@cycle_bp.route('/undo/<int:garden_id>', methods=['POST'])
+def undo_cycle(garden_id):
+    """Undo the most recent cycle generation for a garden.
+
+    Steps:
+    1. Find the latest cycle for this garden.
+    2. Delete cycle_plans and distribution_profiles for that cycle.
+    3. Revert current_cycle setting to the previous cycle.
+    4. Redirect to homepage.
+
+    See FEATURES_SPEC.md section F8.
+    """
+    from database import get_db
+
+    garden = get_garden(garden_id)
+    if not garden:
+        flash("Jardin introuvable.", "error")
+        return redirect(url_for('main.index'))
+
+    # Get the latest cycle
+    latest_cycle = get_latest_cycle(garden_id)
+    if not latest_cycle:
+        flash("Aucun cycle à annuler.", "warning")
+        return redirect(url_for('main.index', garden_id=garden_id))
+
+    # Delete cycle_plans for this cycle
+    delete_cycle_plans(garden_id, latest_cycle)
+
+    # Delete distribution_profiles for this cycle
+    delete_distribution_profiles(garden_id, latest_cycle)
+
+    # Determine the previous cycle (now-latest after deletion)
+    prev_cycle = get_latest_cycle(garden_id)
+    if prev_cycle:
+        update_setting('current_cycle', prev_cycle)
+
+    flash(f"Génération du cycle {latest_cycle} annulée avec succès.", "success")
+    return redirect(url_for('main.index', garden_id=garden_id))
+
+
+# ========================================
+# Finalize Cycle (F12)
+# ========================================
+
+@cycle_bp.route('/finalize/<int:garden_id>/<cycle>', methods=['POST'])
+def finalize_cycle(garden_id, cycle):
+    """Finalize a cycle by saving a JSON snapshot of actual planting data.
+
+    See FEATURES_SPEC.md section F12.
+    """
+    from utils.snapshots import save_snapshot
+
+    garden = get_garden(garden_id)
+    if not garden:
+        flash("Jardin introuvable.", "error")
+        return redirect(url_for('main.index'))
+
+    filename = save_snapshot(garden_id, cycle)
+    if filename:
+        flash(f"Cycle finalisé. Snapshot sauvegardé : {filename}", "success")
+    else:
+        flash("Erreur lors de la sauvegarde du snapshot.", "error")
+
+    return redirect(url_for('main.map_view', garden_id=garden_id, cycle=cycle))
