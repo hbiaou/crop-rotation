@@ -76,7 +76,7 @@
         "target_percentage": "Pourcentage cible",
         "active_beds": "Planches actives",
         "reserve_beds": "Planches en réserve",
-        "total_beds": "Total des sous-planches",
+        "total_beds": "Total des planches",
         "total_sub_beds": "Total des sous-planches",
         "override_note": "Note de remplacement",
         "is_reserve": "Réserve",
