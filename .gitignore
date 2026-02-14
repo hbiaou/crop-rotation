@@ -63,3 +63,7 @@ AGENTS.md
 FEATURES_SPEC.md
 prompts.md
 
+# Test artifacts
+smoke_test.py
+smoke_test_results.txt
+scripts/

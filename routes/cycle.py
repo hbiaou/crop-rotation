@@ -387,7 +387,7 @@ def generate_cycle(garden_id):
     current_cycle = get_latest_cycle(garden_id)
     if not current_cycle:
         flash("Aucun cycle existant. Veuillez d'abord effectuer le démarrage.", "warning")
-        return redirect(url_for('cycle.bootstrap_form', garden_id=garden_id))
+        return redirect(url_for('cycle.bootstrap', garden_id=garden_id))
 
     # Step 1: Save snapshot of current cycle actuals
     snapshot_file = save_snapshot(garden_id, current_cycle)

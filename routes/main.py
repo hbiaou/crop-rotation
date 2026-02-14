@@ -9,7 +9,7 @@ Provides:
 - GET /print/<garden_id>/<cycle> — Print-optimized map view
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from database import (
     get_gardens, get_cycles, get_garden_stats, get_cycle_state,
     get_garden, get_map_data, get_crops, get_categories,
@@ -133,15 +133,6 @@ def map_override(garden_id, cycle):
 
     return redirect(url_for('main.map_view', garden_id=garden_id, cycle=cycle))
 
-
-@main_bp.route('/api/crops/<category>')
-def api_crops_by_category(category):
-    """JSON API — get crops filtered by category."""
-    crops = get_crops(category)
-    return jsonify([
-        {'id': c['id'], 'name': c['crop_name']}
-        for c in crops
-    ])
 
 
 @main_bp.route('/print/<int:garden_id>/<cycle>')
