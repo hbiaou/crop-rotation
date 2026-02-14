@@ -1,6 +1,186 @@
 {% extends "base.html" %}
-{% block title %}{{ i18n.pages.map_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
+{% block title %}Carte — {{ garden['name'] }} — Cycle {{ cycle }}{% endblock %}
+
 {% block content %}
-<h1>{{ i18n.pages.map_title }}</h1>
-<!-- Map view will be implemented in a future session -->
+<div class="map-page">
+
+    {# ── Page Header ── #}
+    <div class="map-header">
+        <div class="map-nav">
+            {% if prev_cycle %}
+            <a href="{{ url_for('main.map_view', garden_id=garden['id'], cycle=prev_cycle) }}"
+                class="btn btn-outline btn-sm" title="Cycle précédent">
+                ← {{ prev_cycle }}
+            </a>
+            {% else %}
+            <span class="btn btn-outline btn-sm btn-disabled">← Précédent</span>
+            {% endif %}
+
+            <h1 class="map-title">
+                {{ garden['name'] }} — Cycle {{ cycle }}
+            </h1>
+
+            {% if next_cycle %}
+            <a href="{{ url_for('main.map_view', garden_id=garden['id'], cycle=next_cycle) }}"
+                class="btn btn-outline btn-sm" title="Cycle suivant">
+                {{ next_cycle }} →
+            </a>
+            {% else %}
+            <span class="btn btn-outline btn-sm btn-disabled">Suivant →</span>
+            {% endif %}
+        </div>
+
+        {# ── Action buttons ── #}
+        <div class="map-actions no-print">
+            <a href="{{ url_for('main.print_view', garden_id=garden['id'], cycle=cycle) }}"
+                class="btn btn-outline btn-sm" target="_blank">
+                🖨️ Imprimer
+            </a>
+            <a href="{{ url_for('main.index', garden_id=garden['id'], cycle=cycle) }}" class="btn btn-outline btn-sm">
+                ← Accueil
+            </a>
+        </div>
+    </div>
+
+    {# ── Legend ── #}
+    <div class="map-legend">
+        <span class="map-legend-title">Légende :</span>
+        <div class="map-legend-items">
+            <div class="map-legend-item">
+                <span class="map-legend-swatch cat-feuille"></span>
+                <span>Feuille</span>
+            </div>
+            <div class="map-legend-item">
+                <span class="map-legend-swatch cat-graine"></span>
+                <span>Graine</span>
+            </div>
+            <div class="map-legend-item">
+                <span class="map-legend-swatch cat-racine"></span>
+                <span>Racine</span>
+            </div>
+            <div class="map-legend-item">
+                <span class="map-legend-swatch cat-fruit"></span>
+                <span>Fruit</span>
+            </div>
+            <div class="map-legend-item">
+                <span class="map-legend-swatch cat-couverture"></span>
+                <span>Couverture</span>
+            </div>
+        </div>
+    </div>
+
+    {# ── Map Table ── #}
+    <div class="map-container">
+        <table class="map-table" id="mapTable">
+            <thead>
+                <tr>
+                    <th class="map-bed-header">Planche</th>
+                    {% for i in range(1, sub_beds_per_bed + 1) %}
+                    <th class="map-sub-header">S{{ i }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for bed in map_data['beds'] %}
+                <tr>
+                    <td class="map-bed-label">P{{ bed['bed_number'] }}</td>
+                    {% for sb in bed['sub_beds'] %}
+                    {% set display_cat = sb['actual_category'] or sb['planned_category'] %}
+                    {% set display_crop = sb['actual_crop_name'] or sb['planned_crop_name'] %}
+                    {% set cat_class = 'cat-' + (display_cat|lower if display_cat else 'empty') %}
+                    {% set is_diff = sb['actual_crop_name'] and sb['actual_crop_name'] != sb['planned_crop_name'] %}
+                    <td class="map-cell {{ cat_class }}{% if sb['is_override'] %} map-cell-overridden{% endif %}"
+                        data-plan-id="{{ sb['cycle_plan_id'] }}" data-bed="{{ bed['bed_number'] }}"
+                        data-position="{{ sb['position'] }}" data-planned-category="{{ sb['planned_category'] or '' }}"
+                        data-planned-crop="{{ sb['planned_crop_name'] or '' }}"
+                        data-actual-category="{{ sb['actual_category'] or '' }}"
+                        data-actual-crop-id="{{ sb['actual_crop_id'] or '' }}"
+                        data-actual-crop="{{ sb['actual_crop_name'] or '' }}" data-notes="{{ sb['notes'] or '' }}" {% if
+                        is_diff %}
+                        title="Planifié: {{ sb['planned_crop_name'] or sb['planned_category'] }} / Réel: {{ sb['actual_crop_name'] or sb['actual_category'] }}"
+                        {% endif %}>
+                        {% if sb['is_override'] %}
+                        <span class="map-override-icon" title="Remplacé">✏️</span>
+                        {% endif %}
+                        <span class="map-cell-crop">{{ display_crop or display_cat or '—' }}</span>
+                        {% if is_diff %}
+                        <span class="map-cell-planned">{{ sb['planned_crop_name'] or sb['planned_category'] }}</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# ── Reserve Beds ── #}
+    {% if map_data['reserve_beds'] %}
+    <div class="reserve-section">
+        <h3 class="reserve-title">🌿 Planches de réserve</h3>
+        <div class="reserve-beds">
+            {% for rb in map_data['reserve_beds'] %}
+            <div class="reserve-bed-chip">
+                P{{ rb['bed_number'] }}-S{{ rb['sub_bed_position'] }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# ── Override Modal ── #}
+<div class="modal-overlay" id="overrideModal" style="display:none;">
+    <div class="modal-content">
+        <h3 class="modal-title">✏️ Remplacement</h3>
+        <form method="POST" action="{{ url_for('main.map_override', garden_id=garden['id'], cycle=cycle) }}"
+            id="overrideForm">
+
+            <div class="modal-info">
+                <strong>Planche :</strong> <span id="modalBedInfo">—</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="modalPlanned">Planifié</label>
+                <input type="text" class="form-input" id="modalPlanned" readonly>
+            </div>
+
+            <input type="hidden" name="plan_id" id="modalPlanId">
+
+            <div class="form-group">
+                <label class="form-label" for="modalCategory">Catégorie réelle</label>
+                <select class="form-select" name="actual_category" id="modalCategory" required>
+                    <option value="">— Choisir —</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="modalCrop">Culture réelle</label>
+                <select class="form-select" name="actual_crop_id" id="modalCrop">
+                    <option value="">— Choisir —</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="modalNotes">Notes</label>
+                <input type="text" class="form-input" name="notes" id="modalNotes"
+                    placeholder="Raison du remplacement...">
+            </div>
+
+            <div class="modal-buttons">
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <button type="button" class="btn btn-outline" id="modalCancel">Annuler</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Crops data for JS filtering #}
+<script>
+    window.cropsByCategory = {{ crops_by_category | tojson }};
+</script>
 {% endblock %}

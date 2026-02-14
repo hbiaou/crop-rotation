@@ -4,6 +4,7 @@
  */
 
 @media print {
+
     /* Page setup: A4 landscape */
     @page {
         size: A4 landscape;
@@ -57,7 +58,8 @@
         font-size: 9pt;
     }
 
-    th, td {
+    th,
+    td {
         border: 1px solid #333;
         padding: 3px 5px;
     }
@@ -69,12 +71,41 @@
     }
 
     /* Category colors — preserved for print */
-    .cat-feuille { background-color: #4CAF50 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cat-graine { background-color: #FFB300 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cat-racine { background-color: #00897B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cat-fruit { background-color: #D32F2F !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cat-couverture { background-color: #7B1FA2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cat-reserve { background-color: #E0E0E0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cat-feuille {
+        background-color: #4CAF50 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cat-graine {
+        background-color: #FFB300 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cat-racine {
+        background-color: #00897B !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cat-fruit {
+        background-color: #D32F2F !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cat-couverture {
+        background-color: #7B1FA2 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cat-reserve {
+        background-color: #E0E0E0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
     /* Page title for print */
     .print-title {
@@ -103,5 +134,81 @@
         width: 12px;
         height: 12px;
         border: 1px solid #333;
+    }
+
+    /* Map-specific print styles */
+    .modal-overlay,
+    .map-actions,
+    .print-actions,
+    .map-nav .btn {
+        display: none !important;
+    }
+
+    .map-container {
+        overflow: visible;
+        border: none;
+    }
+
+    .map-table {
+        width: 100%;
+        min-width: unset;
+        font-size: 8pt;
+    }
+
+    .map-cell {
+        cursor: default;
+        padding: 2px 3px;
+        min-height: auto;
+        font-size: 7pt;
+    }
+
+    .map-cell:hover {
+        opacity: 1;
+        box-shadow: none;
+    }
+
+    .map-cell-crop {
+        font-size: 7pt;
+    }
+
+    .map-cell-planned {
+        font-size: 6pt;
+    }
+
+    .map-bed-header,
+    .map-sub-header,
+    .map-bed-label {
+        font-size: 8pt;
+        padding: 2px 4px;
+    }
+
+    .map-legend {
+        border: none;
+        padding: 0;
+        margin-bottom: 3mm;
+    }
+
+    .map-legend-swatch {
+        width: 12px;
+        height: 12px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .reserve-section {
+        break-inside: avoid;
+        margin-top: 5mm;
+    }
+
+    .print-header {
+        margin-bottom: 3mm;
+    }
+
+    .print-title {
+        font-size: 14pt;
+    }
+
+    .print-date {
+        font-size: 9pt;
     }
 }

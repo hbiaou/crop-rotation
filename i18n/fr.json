@@ -150,5 +150,25 @@
         "setting": "Réglage",
         "beds": "Planches",
         "assigned": "affectées"
+    },
+    "map": {
+        "title": "Carte — {garden} — Cycle {cycle}",
+        "reserve_title": "Planches de réserve",
+        "legend_title": "Légende",
+        "override_title": "Remplacement",
+        "planned_label": "Planifié",
+        "actual_label": "Réel",
+        "category_label": "Catégorie réelle",
+        "crop_label": "Culture réelle",
+        "notes_label": "Notes",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "print": "Imprimer",
+        "prev_cycle": "Cycle précédent",
+        "next_cycle": "Cycle suivant",
+        "no_crop": "Aucune culture",
+        "override_success": "Remplacement enregistré avec succès.",
+        "override_tooltip": "Planifié: {planned} / Réel: {actual}",
+        "back_home": "Accueil"
     }
 }

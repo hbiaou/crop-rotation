@@ -247,4 +247,87 @@ document.addEventListener('DOMContentLoaded', function () {
         // Initial progress update
         updateProgress();
     }
+
+
+    // ========================================
+    // Map Page — Override Modal
+    // ========================================
+
+    var mapTable = document.getElementById('mapTable');
+    if (mapTable) {
+        var modal = document.getElementById('overrideModal');
+        var modalPlanId = document.getElementById('modalPlanId');
+        var modalBedInfo = document.getElementById('modalBedInfo');
+        var modalPlanned = document.getElementById('modalPlanned');
+        var modalCategory = document.getElementById('modalCategory');
+        var modalCrop = document.getElementById('modalCrop');
+        var modalNotes = document.getElementById('modalNotes');
+        var modalCancel = document.getElementById('modalCancel');
+
+        // Click handler on map cells
+        mapTable.addEventListener('click', function (e) {
+            var cell = e.target.closest('.map-cell');
+            if (!cell) return;
+
+            var planId = cell.dataset.planId;
+            var bed = cell.dataset.bed;
+            var pos = cell.dataset.position;
+            var plannedCat = cell.dataset.plannedCategory;
+            var plannedCrop = cell.dataset.plannedCrop;
+            var actualCat = cell.dataset.actualCategory;
+            var actualCropId = cell.dataset.actualCropId;
+            var notes = cell.dataset.notes;
+
+            // Populate modal
+            modalPlanId.value = planId;
+            modalBedInfo.textContent = 'P' + bed + '-S' + pos;
+            modalPlanned.value = plannedCrop || plannedCat || '—';
+            modalNotes.value = notes || '';
+
+            // Set category dropdown
+            modalCategory.value = actualCat || plannedCat || '';
+            updateCropDropdown(modalCategory.value, actualCropId);
+
+            // Show modal
+            modal.style.display = 'flex';
+        });
+
+        // Category change → update crop dropdown
+        modalCategory.addEventListener('change', function () {
+            updateCropDropdown(this.value, '');
+        });
+
+        function updateCropDropdown(category, selectedCropId) {
+            modalCrop.innerHTML = '<option value="">— Choisir —</option>';
+            var crops = window.cropsByCategory[category] || [];
+            crops.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                if (String(c.id) === String(selectedCropId)) {
+                    opt.selected = true;
+                }
+                modalCrop.appendChild(opt);
+            });
+        }
+
+        // Close modal
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        modalCancel.addEventListener('click', closeModal);
+
+        // Close on overlay click
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                closeModal();
+            }
+        });
+    }
 });

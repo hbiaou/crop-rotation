@@ -761,3 +761,94 @@ def get_cycle_state(garden_id, cycle):
         }
     finally:
         conn.close()
+
+
+# ========================================
+# Map Data
+# ========================================
+
+def get_map_data(garden_id, cycle):
+    """Get structured map data for a garden+cycle.
+
+    Returns dict with:
+        garden: garden row
+        beds: list of {bed_number, sub_beds: [sub_bed_data]}
+        reserve_beds: list of reserve sub-bed rows
+    """
+    conn = get_db()
+    try:
+        garden = conn.execute("SELECT * FROM gardens WHERE id = ?", (garden_id,)).fetchone()
+        if not garden:
+            return None
+
+        # Get cycle plans via the view (active beds only)
+        plans = conn.execute(
+            """SELECT * FROM cycle_plans_view
+               WHERE garden_id = ? AND cycle = ? AND is_reserve = 0
+               ORDER BY bed_number, sub_bed_position""",
+            (garden_id, cycle)
+        ).fetchall()
+
+        # Organize into beds → sub-beds
+        beds = {}
+        for row in plans:
+            bn = row['bed_number']
+            if bn not in beds:
+                beds[bn] = {'bed_number': bn, 'sub_beds': []}
+            beds[bn]['sub_beds'].append({
+                'sub_bed_id': row['sub_bed_id'],
+                'cycle_plan_id': row['id'],
+                'position': row['sub_bed_position'],
+                'planned_category': row['planned_category'],
+                'planned_crop_name': row['planned_crop_name'],
+                'planned_crop_id': row['planned_crop_id'],
+                'actual_category': row['actual_category'],
+                'actual_crop_name': row['actual_crop_name'],
+                'actual_crop_id': row['actual_crop_id'],
+                'is_override': bool(row['is_override']),
+                'notes': row['notes'],
+            })
+
+        # Sort by bed number
+        sorted_beds = [beds[bn] for bn in sorted(beds.keys())]
+
+        # Get reserve sub-beds (these have NO cycle_plans records)
+        reserve = conn.execute(
+            """SELECT * FROM sub_beds
+               WHERE garden_id = ? AND is_reserve = 1
+               ORDER BY bed_number, sub_bed_position""",
+            (garden_id,)
+        ).fetchall()
+
+        return {
+            'garden': garden,
+            'beds': sorted_beds,
+            'reserve_beds': [dict(r) for r in reserve],
+        }
+    finally:
+        conn.close()
+
+
+def update_cycle_plan_override(plan_id, actual_category, actual_crop_id, notes):
+    """Record an override on a single cycle_plan.
+
+    Sets actual_category, actual_crop_id, is_override=1, notes, updated_at.
+    Returns True on success, False on failure.
+    """
+    conn = get_db()
+    try:
+        conn.execute(
+            """UPDATE cycle_plans
+               SET actual_category = ?, actual_crop_id = ?,
+                   is_override = 1, notes = ?,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?""",
+            (actual_category, actual_crop_id, notes, plan_id)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

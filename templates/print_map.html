@@ -1,6 +1,106 @@
-{% extends "base.html" %}
-{% block title %}{{ i18n.pages.print_title }} — {{ i18n.nav.app_title }}{% endblock %}
-{% block content %}
-<h1>{{ i18n.pages.print_title }}</h1>
-<!-- Print-optimized map will be implemented in a future session -->
-{% endblock %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ garden['name'] }} — Cycle {{ cycle }} — Impression</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+</head>
+
+<body>
+    <div class="print-page">
+        {# ── Print Header ── #}
+        <div class="print-header">
+            <h1 class="print-title">{{ garden['name'] }} — Cycle {{ cycle }}</h1>
+            <p class="print-date">Imprimé le {{ print_date }}</p>
+        </div>
+
+        {# ── Legend ── #}
+        <div class="map-legend print-legend">
+            <div class="map-legend-items">
+                <div class="map-legend-item">
+                    <span class="map-legend-swatch cat-feuille"></span>
+                    <span>Feuille</span>
+                </div>
+                <div class="map-legend-item">
+                    <span class="map-legend-swatch cat-graine"></span>
+                    <span>Graine</span>
+                </div>
+                <div class="map-legend-item">
+                    <span class="map-legend-swatch cat-racine"></span>
+                    <span>Racine</span>
+                </div>
+                <div class="map-legend-item">
+                    <span class="map-legend-swatch cat-fruit"></span>
+                    <span>Fruit</span>
+                </div>
+                <div class="map-legend-item">
+                    <span class="map-legend-swatch cat-couverture"></span>
+                    <span>Couverture</span>
+                </div>
+            </div>
+        </div>
+
+        {# ── Map Table ── #}
+        <div class="map-container">
+            <table class="map-table">
+                <thead>
+                    <tr>
+                        <th class="map-bed-header">Planche</th>
+                        {% for i in range(1, sub_beds_per_bed + 1) %}
+                        <th class="map-sub-header">S{{ i }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bed in map_data['beds'] %}
+                    <tr>
+                        <td class="map-bed-label">P{{ bed['bed_number'] }}</td>
+                        {% for sb in bed['sub_beds'] %}
+                        {% set display_cat = sb['actual_category'] or sb['planned_category'] %}
+                        {% set display_crop = sb['actual_crop_name'] or sb['planned_crop_name'] %}
+                        {% set cat_class = 'cat-' + (display_cat|lower if display_cat else 'empty') %}
+                        {% set is_diff = sb['actual_crop_name'] and sb['actual_crop_name'] != sb['planned_crop_name'] %}
+                        <td class="map-cell {{ cat_class }}{% if sb['is_override'] %} map-cell-overridden{% endif %}">
+                            {% if sb['is_override'] %}
+                            <span class="map-override-icon">✏️</span>
+                            {% endif %}
+                            <span class="map-cell-crop">{{ display_crop or display_cat or '—' }}</span>
+                            {% if is_diff %}
+                            <span class="map-cell-planned">{{ sb['planned_crop_name'] or sb['planned_category']
+                                }}</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ── Reserve Beds ── #}
+        {% if map_data['reserve_beds'] %}
+        <div class="reserve-section reserve-section-print">
+            <h3 class="reserve-title">Planches de réserve</h3>
+            <div class="reserve-beds">
+                {% for rb in map_data['reserve_beds'] %}
+                <span class="reserve-bed-chip">P{{ rb['bed_number'] }}-S{{ rb['sub_bed_position'] }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# ── Screen-only buttons ── #}
+        <div class="print-actions no-print" style="text-align: center; margin-top: 2rem;">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
+            <a href="{{ url_for('main.map_view', garden_id=garden['id'], cycle=cycle) }}" class="btn btn-outline">←
+                Retour à la carte</a>
+        </div>
+    </div>
+</body>
+
+</html>
