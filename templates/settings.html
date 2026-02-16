@@ -47,6 +47,9 @@
         <button class="tab-btn" data-tab="import" role="tab" aria-selected="false">
             <span class="tab-icon">📥</span> Import
         </button>
+        <button class="tab-btn" data-tab="plantes" role="tab" aria-selected="false">
+            <span class="tab-icon">🌱</span> Base Plantes
+        </button>
     </div>
 
     <!-- ============================================
@@ -286,16 +289,20 @@
             <h2 class="card-title">➕ {{ i18n.buttons.add_crop }}</h2>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('settings.crop_add') }}">
+            <form method="POST" action="{{ url_for('settings.crop_add') }}" id="addCropForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="plant_id" id="cropPlantId" value="">
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group" style="position: relative;">
                         <label class="form-label">{{ i18n.labels.crop_name }}</label>
-                        <input type="text" name="crop_name" class="form-input" placeholder="Nom de la culture" required>
+                        <input type="text" name="crop_name" id="cropNameInput" class="form-input"
+                            placeholder="Nom de la culture" required autocomplete="off"
+                            oninput="searchPlantSuggestions(this.value)">
+                        <div id="cropSuggestions" class="autocomplete-dropdown" style="display:none"></div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ i18n.labels.crop_category }}</label>
-                        <select name="category" class="form-select" required>
+                        <select name="category" id="cropCategorySelect" class="form-select" required>
                             {% for cat in categories %}
                             <option value="{{ cat }}">{{ cat }}</option>
                             {% endfor %}
@@ -303,9 +310,10 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Famille botanique</label>
-                        <input type="text" name="family" class="form-input" placeholder="Ex: Solanacées">
+                        <input type="text" name="family" id="cropFamilyInput" class="form-input" placeholder="Ex: Solanacées">
                     </div>
                 </div>
+                <div id="plantLinkInfo" class="form-hint text-success mt-sm" style="display:none"></div>
                 <div class="mt-md">
                     <button type="submit" class="btn btn-accent">
                         <span class="btn-icon">➕</span> {{ i18n.buttons.add_crop }}
@@ -585,6 +593,203 @@
         </div>
     </div>
 </div>
+
+<!-- ============================================
+         TAB 9: BASE DE DONNÉES PLANTES
+         ============================================ -->
+<div class="tab-panel" id="tab-plantes" role="tabpanel">
+    <!-- Database Status -->
+    <div class="card mb-lg">
+        <div class="card-header d-flex align-center justify-between">
+            <h2 class="card-title">🌱 Base de Données Plantes</h2>
+            <div class="d-flex gap-sm align-center">
+                {% if plant_db_healthy %}
+                <span class="status-badge status-success">✓ {{ plant_count }} plantes</span>
+                {% else %}
+                <span class="status-badge status-error">✗ {{ plant_db_message }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <p class="mb-md">
+                Cette base de données contient les informations canoniques sur les plantes :
+                noms scientifiques, familles botaniques, noms communs et synonymes.
+                Elle permet l'auto-complétion lors de la création de cultures.
+            </p>
+            <div class="d-flex gap-sm">
+                <a href="{{ url_for('plant_db.export_json') }}" class="btn btn-secondary">
+                    <span class="btn-icon">📥</span> Exporter JSON
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="toggleImportPlants()">
+                    <span class="btn-icon">📤</span> Importer JSON
+                </button>
+            </div>
+
+            <!-- Import Form (hidden by default) -->
+            <div id="plant-import-form" style="display:none" class="mt-md">
+                <form method="POST" action="{{ url_for('plant_db.import_json') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Fichier JSON</label>
+                            <input type="file" name="file" accept=".json" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mode d'import</label>
+                            <select name="mode" class="form-select">
+                                <option value="merge">Fusionner (ajouter/mettre à jour)</option>
+                                <option value="replace">Remplacer tout (attention !)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-sm">
+                        <button type="submit" class="btn btn-primary">Importer</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleImportPlants()">Annuler</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Plant Form -->
+    <div class="card mb-lg">
+        <div class="card-header">
+            <h2 class="card-title">➕ Ajouter une plante</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('plant_db.add_plant') }}" id="addPlantForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Nom scientifique *</label>
+                        <input type="text" name="scientific_name" class="form-input"
+                            placeholder="Ex: Solanum lycopersicum" required
+                            onblur="checkPlantDuplicate(this)">
+                        <span id="plant-dup-warning" class="form-hint text-danger" style="display:none"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Famille botanique</label>
+                        <input type="text" name="family" class="form-input" placeholder="Ex: Solanacées">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Catégorie par défaut</label>
+                        <select name="default_category" class="form-select">
+                            <option value="">— Aucune —</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row form-row-2 mt-md">
+                    <div class="form-group">
+                        <label class="form-label">Noms communs (séparés par des virgules)</label>
+                        <input type="text" name="common_names" class="form-input"
+                            placeholder="Ex: Tomate, Pomme d'amour">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Synonymes (séparés par des virgules)</label>
+                        <input type="text" name="synonyms" class="form-input"
+                            placeholder="Ex: Lycopersicon esculentum">
+                    </div>
+                </div>
+                <div class="mt-md">
+                    <button type="submit" class="btn btn-accent">
+                        <span class="btn-icon">➕</span> Ajouter la plante
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Plants List -->
+    <div class="card">
+        <div class="card-header d-flex align-center justify-between">
+            <h2 class="card-title">📋 Liste des plantes</h2>
+            <div class="form-group mb-0" style="width: 300px">
+                <input type="text" id="plantSearchInput" class="form-input"
+                    placeholder="Rechercher une plante..." oninput="filterPlantsList()">
+            </div>
+        </div>
+        <div class="card-body">
+            {% if plants %}
+            <div class="table-container">
+                <table id="plantsTable">
+                    <thead>
+                        <tr>
+                            <th>Nom scientifique</th>
+                            <th>Famille</th>
+                            <th>Catégorie</th>
+                            <th>Noms communs</th>
+                            <th>Synonymes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plant in plants %}
+                        <tr data-plant-id="{{ plant.id }}" data-search-text="{{ plant.scientific_name|lower }} {{ plant.family|lower }}">
+                            <td>
+                                <strong>{{ plant.scientific_name }}</strong>
+                            </td>
+                            <td>{{ plant.family or '—' }}</td>
+                            <td>
+                                {% if plant.default_category %}
+                                <span class="cat-badge cat-{{ plant.default_category|lower }}">{{ plant.default_category }}</span>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ plant.common_names_count }} nom(s)</span>
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ plant.synonyms_count }} synonyme(s)</span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-sm">
+                                    <button type="button" class="btn btn-sm btn-secondary"
+                                        onclick="editPlant({{ plant.id }})">
+                                        ✏️
+                                    </button>
+                                    <form method="POST" action="{{ url_for('plant_db.remove_plant') }}" style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="plant_id" value="{{ plant.id }}">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                            data-confirm="Êtes-vous sûr de vouloir supprimer cette plante ?">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-state-icon">🌱</span>
+                <p>Aucune plante dans la base de données.</p>
+                <p class="text-muted">Ajoutez des plantes avec le formulaire ci-dessus ou importez un fichier JSON.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Plant Edit Modal -->
+<div id="plantEditModal" class="modal" style="display:none">
+    <div class="modal-backdrop" onclick="closePlantModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Modifier la plante</h3>
+            <button type="button" class="modal-close" onclick="closePlantModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="plantEditModalBody">
+            <!-- Loaded via AJAX -->
+        </div>
+    </div>
+</div>
 </div>
 {% endblock %}
 
@@ -805,5 +1010,441 @@
             }
         }
     }
+
+    // ========================================
+    // Plant Database Functions
+    // ========================================
+
+    function toggleImportPlants() {
+        var form = document.getElementById('plant-import-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function filterPlantsList() {
+        var input = document.getElementById('plantSearchInput');
+        var filter = input.value.toLowerCase();
+        var table = document.getElementById('plantsTable');
+        if (!table) return;
+
+        var rows = table.querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+            var searchText = row.getAttribute('data-search-text') || '';
+            if (searchText.indexOf(filter) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function checkPlantDuplicate(input) {
+        var name = input.value.trim();
+        var warning = document.getElementById('plant-dup-warning');
+        if (!name) {
+            warning.style.display = 'none';
+            return;
+        }
+
+        fetch('{{ url_for("plant_db.check_dup") }}?name=' + encodeURIComponent(name))
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success && data.duplicate) {
+                    warning.textContent = data.info.message;
+                    warning.style.display = 'block';
+                } else {
+                    warning.style.display = 'none';
+                }
+            })
+            .catch(function() {
+                warning.style.display = 'none';
+            });
+    }
+
+    function editPlant(plantId) {
+        var modal = document.getElementById('plantEditModal');
+        var body = document.getElementById('plantEditModalBody');
+        body.innerHTML = '<p class="text-center">Chargement...</p>';
+        modal.style.display = 'flex';
+
+        fetch('{{ url_for("plant_db.list_plants") }}' + plantId)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success && data.plant) {
+                    renderPlantEditForm(data.plant);
+                } else {
+                    body.innerHTML = '<p class="text-danger">Erreur: ' + (data.error || 'Plante introuvable') + '</p>';
+                }
+            })
+            .catch(function(err) {
+                body.innerHTML = '<p class="text-danger">Erreur de chargement</p>';
+            });
+    }
+
+    function renderPlantEditForm(plant) {
+        var body = document.getElementById('plantEditModalBody');
+        var categories = {{ categories|tojson }};
+
+        var categoryOptions = '<option value="">— Aucune —</option>';
+        categories.forEach(function(cat) {
+            var selected = plant.default_category === cat ? 'selected' : '';
+            categoryOptions += '<option value="' + cat + '" ' + selected + '>' + cat + '</option>';
+        });
+
+        var commonNamesHtml = '';
+        if (plant.common_names && plant.common_names.length > 0) {
+            plant.common_names.forEach(function(cn) {
+                commonNamesHtml += '<div class="d-flex gap-sm align-center mb-sm" data-cn-id="' + cn.id + '">' +
+                    '<input type="text" class="form-input form-input-sm" value="' + cn.name + '" style="flex:1">' +
+                    '<select class="form-select form-select-sm" style="width:80px">' +
+                    '<option value="fr"' + (cn.lang === 'fr' ? ' selected' : '') + '>FR</option>' +
+                    '<option value="en"' + (cn.lang === 'en' ? ' selected' : '') + '>EN</option>' +
+                    '<option value="local"' + (cn.lang === 'local' ? ' selected' : '') + '>Local</option>' +
+                    '</select>' +
+                    '<button type="button" class="btn btn-sm btn-danger" onclick="deleteCommonName(' + cn.id + ', this)">🗑️</button>' +
+                    '</div>';
+            });
+        }
+
+        var synonymsHtml = '';
+        if (plant.synonyms && plant.synonyms.length > 0) {
+            plant.synonyms.forEach(function(syn) {
+                synonymsHtml += '<div class="d-flex gap-sm align-center mb-sm" data-syn-id="' + syn.id + '">' +
+                    '<input type="text" class="form-input form-input-sm" value="' + syn.synonym + '" style="flex:1">' +
+                    '<button type="button" class="btn btn-sm btn-danger" onclick="deleteSynonym(' + syn.id + ', this)">🗑️</button>' +
+                    '</div>';
+            });
+        }
+
+        body.innerHTML = '<form id="editPlantForm" onsubmit="submitPlantEdit(event, ' + plant.id + ')">' +
+            '<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Nom scientifique</label>' +
+            '<input type="text" name="scientific_name" class="form-input" value="' + plant.scientific_name + '" required>' +
+            '</div>' +
+            '<div class="form-row form-row-2 mt-md">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Famille botanique</label>' +
+            '<input type="text" name="family" class="form-input" value="' + (plant.family || '') + '">' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label class="form-label">Catégorie par défaut</label>' +
+            '<select name="default_category" class="form-select">' + categoryOptions + '</select>' +
+            '</div>' +
+            '</div>' +
+            '<div class="mt-lg">' +
+            '<h4>Noms communs</h4>' +
+            '<div id="commonNamesList">' + commonNamesHtml + '</div>' +
+            '<div class="d-flex gap-sm mt-sm">' +
+            '<input type="text" id="newCommonName" class="form-input form-input-sm" placeholder="Nouveau nom commun" style="flex:1">' +
+            '<select id="newCommonNameLang" class="form-select form-select-sm" style="width:80px">' +
+            '<option value="fr">FR</option><option value="en">EN</option><option value="local">Local</option>' +
+            '</select>' +
+            '<button type="button" class="btn btn-sm btn-secondary" onclick="addCommonName(' + plant.id + ')">➕</button>' +
+            '</div>' +
+            '</div>' +
+            '<div class="mt-lg">' +
+            '<h4>Synonymes</h4>' +
+            '<div id="synonymsList">' + synonymsHtml + '</div>' +
+            '<div class="d-flex gap-sm mt-sm">' +
+            '<input type="text" id="newSynonym" class="form-input form-input-sm" placeholder="Nouveau synonyme" style="flex:1">' +
+            '<button type="button" class="btn btn-sm btn-secondary" onclick="addSynonym(' + plant.id + ')">➕</button>' +
+            '</div>' +
+            '</div>' +
+            '<div class="mt-lg d-flex gap-sm">' +
+            '<button type="submit" class="btn btn-primary">Enregistrer</button>' +
+            '<button type="button" class="btn btn-secondary" onclick="closePlantModal()">Annuler</button>' +
+            '</div>' +
+            '</form>';
+    }
+
+    function closePlantModal() {
+        document.getElementById('plantEditModal').style.display = 'none';
+    }
+
+    function submitPlantEdit(event, plantId) {
+        event.preventDefault();
+        var form = document.getElementById('editPlantForm');
+        var formData = new FormData(form);
+        formData.append('plant_id', plantId);
+
+        fetch('{{ url_for("plant_db.edit_plant") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                closePlantModal();
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    function addCommonName(plantId) {
+        var nameInput = document.getElementById('newCommonName');
+        var langSelect = document.getElementById('newCommonNameLang');
+        var name = nameInput.value.trim();
+        var lang = langSelect.value;
+
+        if (!name) {
+            alert('Veuillez entrer un nom commun');
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('plant_id', plantId);
+        formData.append('name', name);
+        formData.append('lang', lang);
+
+        fetch('{{ url_for("plant_db.add_cn") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                nameInput.value = '';
+                // Reload the modal content
+                editPlant(plantId);
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    function deleteCommonName(cnId, btn) {
+        if (!confirm('Supprimer ce nom commun ?')) return;
+
+        var formData = new FormData();
+        formData.append('common_name_id', cnId);
+
+        fetch('{{ url_for("plant_db.remove_cn") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                btn.closest('[data-cn-id]').remove();
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    function addSynonym(plantId) {
+        var synInput = document.getElementById('newSynonym');
+        var synonym = synInput.value.trim();
+
+        if (!synonym) {
+            alert('Veuillez entrer un synonyme');
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('plant_id', plantId);
+        formData.append('synonym', synonym);
+
+        fetch('{{ url_for("plant_db.add_syn") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                synInput.value = '';
+                // Reload the modal content
+                editPlant(plantId);
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    function deleteSynonym(synId, btn) {
+        if (!confirm('Supprimer ce synonyme ?')) return;
+
+        var formData = new FormData();
+        formData.append('synonym_id', synId);
+
+        fetch('{{ url_for("plant_db.remove_syn") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                btn.closest('[data-syn-id]').remove();
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    // ========================================
+    // Crop Autofill from Plant Database
+    // ========================================
+
+    var searchTimeout = null;
+    var currentSuggestions = [];
+    var selectedSuggestionIndex = -1;
+
+    function searchPlantSuggestions(query) {
+        var dropdown = document.getElementById('cropSuggestions');
+
+        if (!query || query.length < 2) {
+            dropdown.style.display = 'none';
+            currentSuggestions = [];
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            fetch('{{ url_for("plant_db.suggestions") }}?q=' + encodeURIComponent(query) + '&limit=8')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success && data.suggestions && data.suggestions.length > 0) {
+                        currentSuggestions = data.suggestions;
+                        renderSuggestions(data.suggestions);
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                        currentSuggestions = [];
+                    }
+                })
+                .catch(function() {
+                    dropdown.style.display = 'none';
+                    currentSuggestions = [];
+                });
+        }, 200);
+    }
+
+    function renderSuggestions(suggestions) {
+        var dropdown = document.getElementById('cropSuggestions');
+        var html = '';
+
+        suggestions.forEach(function(s, index) {
+            var matchInfo = '';
+            if (s.match_type === 'common_name') {
+                matchInfo = '<div class="autocomplete-match">Trouvé via: ' + s.display_name + '</div>';
+            } else if (s.match_type === 'synonym') {
+                matchInfo = '<div class="autocomplete-match">Synonyme: ' + s.display_name + '</div>';
+            }
+
+            html += '<div class="autocomplete-item" data-index="' + index + '" onclick="selectPlantSuggestion(' + index + ')">' +
+                '<div class="autocomplete-main">' + s.scientific_name + '</div>' +
+                '<div class="autocomplete-sub">' +
+                (s.family ? s.family : 'Famille inconnue') +
+                (s.default_category ? ' • ' + s.default_category : '') +
+                '</div>' +
+                matchInfo +
+                '</div>';
+        });
+
+        dropdown.innerHTML = html;
+        selectedSuggestionIndex = -1;
+    }
+
+    function selectPlantSuggestion(index) {
+        var s = currentSuggestions[index];
+        if (!s) return;
+
+        // Fill in the form fields
+        document.getElementById('cropNameInput').value = s.display_name || s.scientific_name;
+        document.getElementById('cropPlantId').value = s.plant_id;
+
+        if (s.family) {
+            document.getElementById('cropFamilyInput').value = s.family;
+        }
+
+        if (s.default_category) {
+            var categorySelect = document.getElementById('cropCategorySelect');
+            for (var i = 0; i < categorySelect.options.length; i++) {
+                if (categorySelect.options[i].value === s.default_category) {
+                    categorySelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // Show link info
+        var linkInfo = document.getElementById('plantLinkInfo');
+        linkInfo.innerHTML = '✓ Lié à la plante: <strong>' + s.scientific_name + '</strong>';
+        linkInfo.style.display = 'block';
+
+        // Hide dropdown
+        document.getElementById('cropSuggestions').style.display = 'none';
+        currentSuggestions = [];
+    }
+
+    // Handle keyboard navigation in suggestions
+    document.getElementById('cropNameInput').addEventListener('keydown', function(e) {
+        var dropdown = document.getElementById('cropSuggestions');
+        if (dropdown.style.display === 'none' || currentSuggestions.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, currentSuggestions.length - 1);
+            updateSelectedSuggestion();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
+            updateSelectedSuggestion();
+        } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+            e.preventDefault();
+            selectPlantSuggestion(selectedSuggestionIndex);
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+            currentSuggestions = [];
+        }
+    });
+
+    function updateSelectedSuggestion() {
+        var items = document.querySelectorAll('#cropSuggestions .autocomplete-item');
+        items.forEach(function(item, i) {
+            if (i === selectedSuggestionIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        var dropdown = document.getElementById('cropSuggestions');
+        var input = document.getElementById('cropNameInput');
+        if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Clear plant_id if user manually types a different name
+    document.getElementById('cropNameInput').addEventListener('input', function() {
+        document.getElementById('cropPlantId').value = '';
+        document.getElementById('plantLinkInfo').style.display = 'none';
+    });
 </script>
 {% endblock %}

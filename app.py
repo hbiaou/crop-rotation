@@ -14,11 +14,13 @@ from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
 from database import init_db, seed_defaults
+from plant_database import init_plant_db
 from routes.main import main_bp
 from routes.cycle import cycle_bp
 from routes.distribution import distribution_bp
 from routes.settings import settings_bp
 from routes.export import export_bp
+from routes.plant_db import plant_db_bp
 
 
 def create_app(test_config=None):
@@ -42,6 +44,11 @@ def create_app(test_config=None):
     with app.app_context():
         init_db()
         seed_defaults()
+        # Initialize separate plant database
+        try:
+            init_plant_db()
+        except Exception as e:
+            print(f"Warning: Could not initialize plant database: {e}")
 
     # Register blueprints
     app.register_blueprint(main_bp)
@@ -49,6 +56,7 @@ def create_app(test_config=None):
     app.register_blueprint(distribution_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(export_bp)
+    app.register_blueprint(plant_db_bp)
 
     # Load i18n strings
     i18n_path = os.path.join(base_dir, 'i18n', 'fr.json')

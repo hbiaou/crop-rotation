@@ -28,6 +28,9 @@ from database import (
     save_rotation_sequence, update_setting, reset_garden_history,
     import_garden_cycle_data
 )
+from plant_database import (
+    get_all_plants, check_plant_db_health, get_plant_count
+)
 from utils.backup import backup_db, list_backups, restore_db
 import json
 
@@ -67,6 +70,17 @@ def index():
     for cat in categories:
         crops_by_category[cat] = [c for c in crops if c['category'] == cat]
 
+    # Get plant database info
+    try:
+        plant_db_healthy, plant_db_message = check_plant_db_health()
+        plants = get_all_plants() if plant_db_healthy else []
+        plant_count = get_plant_count() if plant_db_healthy else 0
+    except Exception:
+        plant_db_healthy = False
+        plant_db_message = "Erreur de connexion"
+        plants = []
+        plant_count = 0
+
     return render_template('settings.html',
         gardens=gardens,
         garden_data=garden_data,
@@ -77,6 +91,10 @@ def index():
         cycles_per_year=cycles_per_year,
         distribution_defaults=distribution_defaults,
         backups=backups,
+        plants=plants,
+        plant_count=plant_count,
+        plant_db_healthy=plant_db_healthy,
+        plant_db_message=plant_db_message,
     )
 
 
@@ -286,8 +304,9 @@ def crop_add():
         return redirect(url_for('settings.index', tab='cultures'))
 
     family = request.form.get('family', '').strip()
+    plant_id = request.form.get('plant_id', type=int)
 
-    result = create_crop(crop_name, category, family)
+    result = create_crop(crop_name, category, family, plant_id)
     if result:
         flash(f"Culture « {crop_name} » ajoutée avec succès.", 'success')
     else:
