@@ -149,6 +149,7 @@ def init_db():
 
     # Run migrations
     _migrate_add_family_column()
+    _migrate_add_plant_id_column()
 
 
 def _migrate_add_family_column():
@@ -165,6 +166,22 @@ def _migrate_add_family_column():
         print(f"Warning: Migration _migrate_add_family_column failed: {e}")
         # We generally don't want to crash the whole app for a migration failure if possible,
         # but masking it consistently is bad. Printing it ensures visibility.
+    finally:
+        conn.close()
+
+
+def _migrate_add_plant_id_column():
+    """Add plant_id column to crops table for linking to plant database."""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Check if column exists
+        columns = [i[1] for i in cursor.execute("PRAGMA table_info(crops)").fetchall()]
+        if 'plant_id' not in columns:
+            cursor.execute("ALTER TABLE crops ADD COLUMN plant_id INTEGER DEFAULT NULL")
+            conn.commit()
+    except Exception as e:
+        print(f"Warning: Migration _migrate_add_plant_id_column failed: {e}")
     finally:
         conn.close()
 
@@ -519,13 +536,13 @@ def _recount_active(conn, garden_id):
 # Crop CRUD
 # ========================================
 
-def create_crop(crop_name, category, family=''):
+def create_crop(crop_name, category, family='', plant_id=None):
     """Create a new crop. Returns crop_id or None if name already exists."""
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO crops (crop_name, category, family) VALUES (?, ?, ?)",
-            (crop_name.strip(), category, family.strip())
+            "INSERT INTO crops (crop_name, category, family, plant_id) VALUES (?, ?, ?, ?)",
+            (crop_name.strip(), category, family.strip(), plant_id)
         )
         crop_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit()
