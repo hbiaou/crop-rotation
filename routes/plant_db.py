@@ -167,12 +167,18 @@ def add_plant():
         if preferred_name:
             common_names.append({'name': preferred_name, 'lang': 'fr', 'is_preferred': True})
 
-        # Add other common names (not preferred)
+        # Add other common names
+        # If no preferred_name was given, don't set is_preferred explicitly -
+        # let create_plant() use its default logic (first name becomes preferred)
         if common_names_raw:
             for n in common_names_raw.split(','):
                 name = n.strip()
                 if name and name != preferred_name:
-                    common_names.append({'name': name, 'lang': 'fr', 'is_preferred': False})
+                    # Only explicitly set is_preferred=False if we already have a preferred name
+                    if preferred_name:
+                        common_names.append({'name': name, 'lang': 'fr', 'is_preferred': False})
+                    else:
+                        common_names.append({'name': name, 'lang': 'fr'})
 
         # Parse synonyms from form
         synonyms_raw = request.form.get('synonyms', '')
