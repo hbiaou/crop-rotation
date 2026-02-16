@@ -738,8 +738,6 @@
                             <th>Nom préféré</th>
                             <th>Famille</th>
                             <th>Catégorie</th>
-                            <th>Noms communs</th>
-                            <th>Synonymes</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -757,12 +755,6 @@
                                 {% else %}
                                 —
                                 {% endif %}
-                            </td>
-                            <td>
-                                <span class="text-muted">{{ plant.common_names_count }} nom(s)</span>
-                            </td>
-                            <td>
-                                <span class="text-muted">{{ plant.synonyms_count }} synonyme(s)</span>
                             </td>
                             <td>
                                 <div class="d-flex gap-sm">
