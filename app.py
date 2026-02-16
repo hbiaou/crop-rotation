@@ -11,6 +11,7 @@ Run: python app.py → localhost:5000
 import os
 import json
 from flask import Flask
+from flask_wtf.csrf import CSRFProtect
 
 from database import init_db, seed_defaults
 from routes.main import main_bp
@@ -20,10 +21,16 @@ from routes.settings import settings_bp
 from routes.export import export_bp
 
 
-def create_app():
+def create_app(test_config=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.secret_key = 'crop-rotation-local-app-secret-key'
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+
+    if test_config:
+        app.config.update(test_config)
+
+    csrf = CSRFProtect(app)
 
     # Ensure data and backup directories exist
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,8 +39,9 @@ def create_app():
     os.makedirs(os.path.join(base_dir, 'history'), exist_ok=True)
 
     # Initialize database and seed defaults
-    init_db()
-    seed_defaults()
+    with app.app_context():
+        init_db()
+        seed_defaults()
 
     # Register blueprints
     app.register_blueprint(main_bp)

@@ -11,6 +11,7 @@ See FEATURES_SPEC.md section 6 (Backup Strategy) for full specification.
 import os
 import shutil
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +19,7 @@ DB_PATH = os.path.join(BASE_DIR, 'data', 'crop_rotation.db')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
 
 
-def backup_db(reason='manual'):
+def backup_db(reason: str = 'manual') -> Optional[str]:
     """
     Copy the current database to backups/ with a timestamped filename.
 
@@ -46,7 +47,7 @@ def backup_db(reason='manual'):
         return None
 
 
-def list_backups():
+def list_backups() -> List[Dict[str, Any]]:
     """
     List all backup files in the backups/ directory.
 
@@ -108,6 +109,10 @@ def restore_db(filename):
     Returns:
         True on success, False on failure.
     """
+    # Security check: Prevent path traversal
+    if '..' in filename or '/' in filename or '\\' in filename:
+        return False
+
     backup_path = os.path.join(BACKUP_DIR, filename)
 
     if not os.path.exists(backup_path):

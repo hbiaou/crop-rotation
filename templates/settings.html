@@ -63,6 +63,7 @@
                         ✏️ {{ i18n.buttons.edit }}
                     </button>
                     <form method="POST" action="{{ url_for('settings.garden_delete') }}" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
                         <button type="submit" class="btn btn-sm btn-danger"
                             data-confirm="Êtes-vous sûr de vouloir supprimer ce jardin ?">
@@ -100,6 +101,7 @@
                 <!-- Edit Form (hidden by default) -->
                 <div class="edit-garden-form" id="edit-garden-{{ gd.garden.id }}" style="display:none">
                     <form method="POST" action="{{ url_for('settings.garden_edit') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
                         <div class="form-row form-row-4">
                             <div class="form-group">
@@ -179,6 +181,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('settings.garden_add') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row form-row-3">
                     <div class="form-group">
                         <label class="form-label">{{ i18n.labels.garden_code }}</label>
@@ -249,6 +252,7 @@
                         <!-- Category change -->
                         <form method="POST" action="{{ url_for('settings.crop_category') }}"
                             class="d-flex gap-sm align-center">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="crop_id" value="{{ crop.id }}">
                             <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
                                 {% for c in categories %}
@@ -258,6 +262,7 @@
                         </form>
                         <!-- Delete -->
                         <form method="POST" action="{{ url_for('settings.crop_delete') }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="crop_id" value="{{ crop.id }}">
                             <button type="submit" class="btn btn-sm btn-danger"
                                 data-confirm="{{ i18n.confirm.delete_crop }}">
@@ -282,6 +287,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('settings.crop_add') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">{{ i18n.labels.crop_name }}</label>
@@ -320,6 +326,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('settings.rotation_save') }}" id="rotationForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="rotation-list" id="rotationList">
                     {% for step in rotation %}
                     <div class="rotation-item" data-category="{{ step.category }}">
@@ -373,6 +380,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('settings.cycles_save') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group" style="max-width: 300px">
                     <label class="form-label">Nombre de cycles par an</label>
                     <select name="cycles_per_year" class="form-select" id="cyclesSelect"
@@ -415,6 +423,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('settings.distribution_save') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% for cat in categories %}
                 <div class="category-section mb-lg">
                     <h3 class="cat-title mb-md"><span class="cat-badge cat-{{ cat|lower }}">{{ cat }}</span></h3>
@@ -455,6 +464,7 @@
         <div class="card-header d-flex align-center justify-between">
             <h2 class="card-title">💾 {{ i18n.glossary.backup }}</h2>
             <form method="POST" action="{{ url_for('settings.backup_create') }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-accent">
                     <span class="btn-icon">📦</span> Créer une sauvegarde
                 </button>
@@ -483,6 +493,7 @@
                             <td>
                                 <form method="POST" action="{{ url_for('settings.backup_restore') }}"
                                     style="display:inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="filename" value="{{ backup.filename }}">
                                     <button type="submit" class="btn btn-sm btn-danger"
                                         data-confirm="{{ i18n.confirm.restore_backup }}">
@@ -530,6 +541,7 @@
 
             <form method="POST" action="{{ url_for('settings.garden_reset') }}"
                 onsubmit="return confirm('Êtes-vous ABSOLIMENT sûr de vouloir effacer tout l\'historique de ce jardin ? Cette action est irréversible.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
                 <button type="submit" class="btn btn-danger">
                     💣 Tout effacer et recommencer à zéro
@@ -561,6 +573,7 @@
 
             <form method="POST" action="{{ url_for('settings.import_cycle') }}" enctype="multipart/form-data"
                 class="mt-md">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="importFile">Fichier JSON</label>
                     <input type="file" id="importFile" name="file" accept=".json" required class="form-control">

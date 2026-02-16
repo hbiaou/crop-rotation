@@ -14,10 +14,8 @@ Algorithm details:
 - Diversity bonus: +2 per past cycle with a different crop in same category
 """
 
-import re
 from database import (
-    get_db, get_setting, get_rotation_sequence, get_sub_beds,
-    get_garden, update_setting, get_crops
+    get_db, get_setting
 )
 from utils.backup import backup_db
 

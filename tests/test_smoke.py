@@ -36,7 +36,7 @@ def test_homepage_loads(client):
 
 def test_static_assets(client):
     """Test that static assets like CSS are accessible."""
-    rv = client.get('/static/style.css')
+    rv = client.get('/static/css/style.css')
     assert rv.status_code == 200
 
 def test_settings_page(client):

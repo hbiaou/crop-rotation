@@ -15,7 +15,6 @@ See FEATURES_SPEC.md sections F1, F2, F6, F8.
 
 import json
 import os
-import math
 import re
 import random
 from datetime import datetime
@@ -27,7 +26,7 @@ from database import (
     get_garden, get_sub_beds, get_crops, get_setting, get_rotation_sequence,
     get_cycle_plans_for_garden_cycle, create_cycle_plans_batch, update_setting,
     get_categories, get_garden_stats, get_latest_cycle,
-    delete_cycle_plans, delete_distribution_profiles, has_overrides
+    delete_cycle_plans, delete_distribution_profiles
 )
 
 cycle_bp = Blueprint('cycle', __name__)
@@ -122,8 +121,6 @@ def _compute_auto_distribution(garden_id):
 
     total_beds = len(active_beds)
     num_categories = len(categories)
-    beds_per_category = total_beds // num_categories
-    remainder = total_beds % num_categories
 
     # ── Step 1: Interleave categories across BEDS (round-robin) ──
     # Group sub-beds by bed_number first, then assign one category per bed.
@@ -442,7 +439,6 @@ def undo_cycle(garden_id):
 
     See FEATURES_SPEC.md section F8.
     """
-    from database import get_db
 
     garden = get_garden(garden_id)
     if not garden:

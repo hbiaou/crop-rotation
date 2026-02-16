@@ -7,15 +7,22 @@ Uses WAL mode for concurrent read performance.
 
 import sqlite3
 import os
-import json
+
+# ... imports ...
+from flask import current_app
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'crop_rotation.db')
 
 
 def get_db():
     """Get a database connection with WAL mode and foreign keys enabled."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    try:
+        db_path = current_app.config.get('DATABASE', DB_PATH)
+    except RuntimeError:
+        db_path = DB_PATH
+
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.row_factory = sqlite3.Row

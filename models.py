@@ -4,9 +4,8 @@ models.py — Python dataclasses for the crop rotation application.
 Maps to the SQLite tables defined in FEATURES_SPEC.md section 4.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
-from datetime import datetime
 
 
 @dataclass

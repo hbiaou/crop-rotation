@@ -44,6 +44,7 @@
             <form method="POST" action="{{ url_for('cycle.finalize_cycle', garden_id=garden['id'], cycle=cycle) }}"
                 style="display: inline;"
                 onsubmit="return confirm('Finaliser ce cycle ? Un instantané sera sauvegardé dans l\'historique.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-accent btn-sm">
                     ✅ Finaliser le cycle
                 </button>
@@ -51,6 +52,7 @@
             <form method="POST" action="{{ url_for('cycle.undo_cycle', garden_id=garden['id']) }}"
                 style="display: inline;"
                 onsubmit="return confirm('Êtes-vous sûr de vouloir annuler la génération du cycle {{ cycle }} ?{% if has_overrides %} Des remplacements ont été enregistrés et seront perdus.{% endif %}');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger btn-sm">
                     ⚠️ Annuler la génération
                 </button>
@@ -155,6 +157,7 @@
         <h3 class="modal-title">✏️ Remplacement</h3>
         <form method="POST" action="{{ url_for('main.map_override', garden_id=garden['id'], cycle=cycle) }}"
             id="overrideForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="modal-info">
                 <strong>Planche :</strong> <span id="modalBedInfo">—</span>

@@ -1,15 +1,13 @@
 import os
-import sqlite3
 import json
 import database
 # Patch DB_PATH to use a test database
 database.DB_PATH = os.path.join(os.getcwd(), 'verify_defaults.db')
 
-from app import create_app
-from database import init_db, get_db
-from routes.settings import get_crops, get_categories, update_setting, get_setting
-from routes.distribution import _load_default_distribution
-from flask import Flask
+from app import create_app  # noqa: E402
+from database import get_db  # noqa: E402
+from routes.settings import get_setting  # noqa: E402
+from routes.distribution import _load_default_distribution  # noqa: E402
 
 # Setup
 db_path = os.path.join(os.getcwd(), 'verify_defaults.db')

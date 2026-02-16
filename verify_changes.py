@@ -1,7 +1,5 @@
 
-import sqlite3
-import os
-from database import get_db, create_garden, delete_garden, create_crop, delete_crop, delete_cycle_plans
+from database import get_db, create_garden, delete_cycle_plans
 
 def verify_family_column():
     print("Verifying 'family' column in 'crops' table...")
@@ -78,7 +76,7 @@ def verify_cycle_deletion():
             conn.execute("DELETE FROM sub_beds WHERE garden_id = ?", (garden_id,))
             conn.execute("DELETE FROM cycle_plans WHERE garden_id = ?", (garden_id,))
             conn.commit()
-        except:
+        except Exception:
             pass
         conn.close()
 

@@ -1,5 +1,4 @@
-from database import get_db, update_setting
-import sqlite3
+from database import get_db
 
 conn = get_db()
 try:

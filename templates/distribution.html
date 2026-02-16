@@ -10,6 +10,7 @@
 
 <form method="post" action="{{ url_for('distribution.save_distribution', garden_id=garden.id, cycle=cycle) }}"
     id="distributionForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="distribution-toolbar">
         <div class="toolbar-info">
             <span class="badge badge-info">{{ i18n.distribution.hint }}</span>
@@ -102,6 +103,7 @@
 <!-- Hidden form for Undo -->
 {% if request.args.get('new') == '1' %}
 <form id="undoForm" method="POST" action="{{ url_for('cycle.undo_cycle', garden_id=garden.id) }}" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endif %}
 

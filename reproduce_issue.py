@@ -1,10 +1,7 @@
 import os
-import sqlite3
-import shutil
 from app import create_app
 from database import init_db, get_db, save_distribution_profiles
 from rotation_engine import generate_next_cycle, assign_crops
-from routes.distribution import save_distribution
 
 # Setup
 db_path = os.path.join(os.getcwd(), 'reproduce.db')

@@ -14,7 +14,7 @@ from flask import Blueprint, flash, redirect, url_for, send_file
 from utils.backup import backup_db
 from utils.export import generate_excel, generate_excel_all
 from database import get_gardens, get_cycles
-from flask import render_template, request
+from flask import render_template
 
 export_bp = Blueprint('export', __name__, url_prefix='/export')
 

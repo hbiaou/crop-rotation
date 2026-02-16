@@ -45,7 +45,7 @@ def index():
     distribution_defaults_json = get_setting('distribution_defaults', '{}')
     try:
         distribution_defaults = json.loads(distribution_defaults_json)
-    except:
+    except Exception:
         distribution_defaults = {}
     backups = list_backups()
 

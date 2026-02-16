@@ -26,7 +26,8 @@
                     required pattern="^[0-9]{4}[A-Z0-9]+$" title="Format: YYYY + Suffix (e.g. 2025B)">
             </div>
             <small class="form-text text-muted">
-                {{ i18n.bootstrap.cycle_description | default('Changez ceci pour entrer des données historiques (ex: cycle de l\'année dernière).') }}
+                {{ i18n.bootstrap.cycle_description | default('Changez ceci pour entrer des données historiques (ex:
+                cycle de l\'année dernière).') }}
             </small>
         </div>
     </div>
@@ -71,6 +72,7 @@
 
     <!-- Bootstrap Form -->
     <form method="post" action="{{ url_for('cycle.bootstrap_save', garden_id=garden.id) }}" id="bootstrapForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         {% for bed_number, sub_beds in beds_grouped.items() %}
         <div class="bed-card" data-bed="{{ bed_number }}">
