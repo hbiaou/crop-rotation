@@ -342,6 +342,7 @@ def assign_crops(garden_id, cycle):
 
         # Step 2: Get plant data from the plant database (separate DB)
         plant_data = {}
+        plant_conn = None
         try:
             plant_conn = get_plant_db()
             plants = plant_conn.execute("""
@@ -353,10 +354,12 @@ def assign_crops(garden_id, cycle):
                     'family': p['family'],
                     'base_species_norm': p['base_species_norm']
                 }
-            plant_conn.close()
         except Exception:
             # If plant database is unavailable, continue without plant-level data
             pass
+        finally:
+            if plant_conn:
+                plant_conn.close()
 
         # Step 3: Build lookup dictionaries by merging crop and plant data
         crop_to_family = {}
