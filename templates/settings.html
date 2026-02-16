@@ -738,7 +738,7 @@
                     </thead>
                     <tbody>
                         {% for plant in plants %}
-                        <tr data-plant-id="{{ plant.id }}" data-search-text="{{ plant.scientific_name|lower }} {{ plant.family|lower }}">
+                        <tr data-plant-id="{{ plant.id }}" data-search-text="{{ plant.search_text }}">
                             <td>
                                 <strong>{{ plant.scientific_name }}</strong>
                             </td>

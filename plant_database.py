@@ -445,10 +445,10 @@ def get_plant(plant_id: int) -> Optional[Dict[str, Any]]:
 
 def get_all_plants() -> List[Dict[str, Any]]:
     """
-    Get all plants with their common names count and synonyms count.
+    Get all plants with their common names count, synonyms count, and search text.
 
     Returns:
-        List of plant dicts with counts
+        List of plant dicts with counts and search_text for client-side filtering
     """
     conn = get_plant_db()
     cursor = conn.cursor()
@@ -458,12 +458,28 @@ def get_all_plants() -> List[Dict[str, Any]]:
             SELECT
                 p.*,
                 (SELECT COUNT(*) FROM plant_common_names WHERE plant_id = p.id) as common_names_count,
-                (SELECT COUNT(*) FROM plant_synonyms WHERE plant_id = p.id) as synonyms_count
+                (SELECT COUNT(*) FROM plant_synonyms WHERE plant_id = p.id) as synonyms_count,
+                (SELECT GROUP_CONCAT(common_name, ' ') FROM plant_common_names WHERE plant_id = p.id) as common_names_text,
+                (SELECT GROUP_CONCAT(synonym, ' ') FROM plant_synonyms WHERE plant_id = p.id) as synonyms_text
             FROM plants p
             ORDER BY p.scientific_name
         """).fetchall()
 
-        return [dict(p) for p in plants]
+        result = []
+        for p in plants:
+            plant_dict = dict(p)
+            # Build search text including all searchable fields
+            search_parts = [
+                plant_dict.get('scientific_name', ''),
+                plant_dict.get('family', ''),
+                plant_dict.get('default_category', ''),
+                plant_dict.get('common_names_text', '') or '',
+                plant_dict.get('synonyms_text', '') or ''
+            ]
+            plant_dict['search_text'] = ' '.join(search_parts).lower()
+            result.append(plant_dict)
+
+        return result
     finally:
         conn.close()
 
