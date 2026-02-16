@@ -64,8 +64,8 @@
             url = "{{ url_for('export.export_excel_all', cycle='CYCLE_PLACEHOLDER') }}";
             url = url.replace('CYCLE_PLACEHOLDER', cycle);
         } else {
-            url = "{{ url_for('export.export_excel', garden_id='GARDEN_PLACEHOLDER', cycle='CYCLE_PLACEHOLDER') }}";
-            url = url.replace('GARDEN_PLACEHOLDER', gardenId).replace('CYCLE_PLACEHOLDER', cycle);
+            url = "{{ url_for('export.export_excel', garden_id=0, cycle='CYCLE_PLACEHOLDER') }}";
+            url = url.replace('/0/', '/' + gardenId + '/').replace('CYCLE_PLACEHOLDER', cycle);
         }
 
         window.location.href = url;
