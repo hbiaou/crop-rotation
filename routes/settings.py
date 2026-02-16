@@ -22,9 +22,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from database import (
     get_gardens, get_garden, get_sub_beds, get_crops, get_setting,
-    get_rotation_sequence, get_garden_stats, get_categories,
+    get_rotation_sequence, get_garden_stats, get_categories, get_cycles,
     create_garden, update_garden, delete_garden, toggle_sub_bed_reserve,
-    create_crop, delete_crop, update_crop_category,
     create_crop, delete_crop, update_crop_category,
     save_rotation_sequence, update_setting, reset_garden_history,
     import_garden_cycle_data
