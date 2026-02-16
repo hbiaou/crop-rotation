@@ -99,11 +99,17 @@ def init_plant_db():
     cursor = conn.cursor()
 
     # Table: plants
+    # - scientific_name: Full scientific name including infraspecific details
+    # - base_species: Species-level name for rotation grouping (e.g., "Capsicum annuum")
+    # - infraspecific_detail: Variety/cultivar group info (e.g., "var. capitata", "Grossum Group")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS plants (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scientific_name TEXT NOT NULL,
             scientific_name_norm TEXT NOT NULL UNIQUE,
+            base_species TEXT DEFAULT '',
+            base_species_norm TEXT DEFAULT '',
+            infraspecific_detail TEXT DEFAULT '',
             family TEXT DEFAULT '',
             default_category TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -117,7 +123,20 @@ def init_plant_db():
         ON plants(scientific_name_norm)
     """)
 
+    # Index on base_species_norm for species-level rotation queries
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_plants_base_species_norm
+        ON plants(base_species_norm)
+    """)
+
+    # Index on family for family-level rotation queries
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_plants_family
+        ON plants(family)
+    """)
+
     # Table: plant_common_names
+    # - is_preferred: Marks the preferred display name for UI (one per plant+lang)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS plant_common_names (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,6 +144,7 @@ def init_plant_db():
             common_name TEXT NOT NULL,
             common_name_norm TEXT NOT NULL,
             lang TEXT DEFAULT 'fr',
+            is_preferred INTEGER DEFAULT 0,
             UNIQUE(plant_id, common_name_norm)
         )
     """)
@@ -153,6 +173,73 @@ def init_plant_db():
 
     conn.commit()
     conn.close()
+
+    # Run migrations for existing databases
+    _migrate_plant_db_schema()
+
+
+def _migrate_plant_db_schema():
+    """
+    Migrate existing plant database to add new columns.
+
+    Adds:
+    - base_species, base_species_norm, infraspecific_detail to plants table
+    - is_preferred to plant_common_names table
+
+    This function is idempotent - safe to call multiple times.
+    """
+    conn = get_plant_db()
+    cursor = conn.cursor()
+
+    try:
+        # Check plants table columns
+        plant_columns = [i[1] for i in cursor.execute("PRAGMA table_info(plants)").fetchall()]
+
+        # Add base_species columns if missing
+        if 'base_species' not in plant_columns:
+            cursor.execute("ALTER TABLE plants ADD COLUMN base_species TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE plants ADD COLUMN base_species_norm TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE plants ADD COLUMN infraspecific_detail TEXT DEFAULT ''")
+
+            # Populate base_species from scientific_name for existing records
+            # For simple species names, base_species = scientific_name
+            cursor.execute("""
+                UPDATE plants
+                SET base_species = scientific_name,
+                    base_species_norm = scientific_name_norm
+                WHERE base_species = '' OR base_species IS NULL
+            """)
+
+            # Create index for base_species lookups
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_plants_base_species_norm
+                ON plants(base_species_norm)
+            """)
+
+        # Check plant_common_names columns
+        cn_columns = [i[1] for i in cursor.execute("PRAGMA table_info(plant_common_names)").fetchall()]
+
+        # Add is_preferred column if missing
+        if 'is_preferred' not in cn_columns:
+            cursor.execute("ALTER TABLE plant_common_names ADD COLUMN is_preferred INTEGER DEFAULT 0")
+
+            # Set first common name per (plant, lang) as preferred
+            cursor.execute("""
+                UPDATE plant_common_names
+                SET is_preferred = 1
+                WHERE id IN (
+                    SELECT MIN(id) FROM plant_common_names
+                    GROUP BY plant_id, lang
+                )
+            """)
+
+        conn.commit()
+
+    except Exception as e:
+        print(f"Warning: Plant database migration failed: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 
 def check_plant_db_health() -> Tuple[bool, str]:
@@ -185,17 +272,22 @@ def create_plant(
     family: str = '',
     default_category: str = '',
     common_names: Optional[List[Dict[str, str]]] = None,
-    synonyms: Optional[List[str]] = None
+    synonyms: Optional[List[str]] = None,
+    base_species: str = '',
+    infraspecific_detail: str = ''
 ) -> Tuple[Optional[int], Optional[str]]:
     """
     Create a new plant in the database.
 
     Args:
-        scientific_name: Scientific name (required)
-        family: Botanical family
+        scientific_name: Full scientific name (required), e.g., "Capsicum annuum Grossum Group"
+        family: Botanical family, e.g., "Solanaceae"
         default_category: Default crop category (Feuille, Graine, Racine, Fruit, Couverture)
-        common_names: List of dicts with 'name' and optional 'lang' keys
+        common_names: List of dicts with 'name', optional 'lang', and optional 'is_preferred' keys
         synonyms: List of synonym strings
+        base_species: Species-level name for rotation grouping, e.g., "Capsicum annuum"
+                      If not provided, defaults to scientific_name
+        infraspecific_detail: Variety/cultivar info, e.g., "Grossum Group", "var. capitata"
 
     Returns:
         Tuple of (plant_id, error_message)
@@ -207,6 +299,11 @@ def create_plant(
 
     scientific_name = scientific_name.strip()
     scientific_name_norm = normalize_name(scientific_name)
+
+    # Default base_species to scientific_name if not provided
+    base_species = base_species.strip() if base_species else scientific_name
+    base_species_norm = normalize_name(base_species)
+    infraspecific_detail = infraspecific_detail.strip() if infraspecific_detail else ''
 
     conn = get_plant_db()
     cursor = conn.cursor()
@@ -223,24 +320,35 @@ def create_plant(
 
         # Insert the plant
         cursor.execute(
-            """INSERT INTO plants (scientific_name, scientific_name_norm, family, default_category)
-               VALUES (?, ?, ?, ?)""",
-            (scientific_name, scientific_name_norm, family.strip(), default_category.strip())
+            """INSERT INTO plants (scientific_name, scientific_name_norm, base_species,
+               base_species_norm, infraspecific_detail, family, default_category)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (scientific_name, scientific_name_norm, base_species, base_species_norm,
+             infraspecific_detail, family.strip(), default_category.strip())
         )
         plant_id = cursor.lastrowid
 
         # Add common names
         if common_names:
+            # Track if we've set a preferred name for each language
+            preferred_set = set()
+
             for cn in common_names:
                 name = cn.get('name', '').strip()
                 if name:
                     lang = cn.get('lang', 'fr')
                     name_norm = normalize_name(name)
+                    # First name in each language becomes preferred unless explicitly set
+                    is_preferred = cn.get('is_preferred', lang not in preferred_set)
+                    if is_preferred:
+                        preferred_set.add(lang)
+
                     try:
                         cursor.execute(
-                            """INSERT INTO plant_common_names (plant_id, common_name, common_name_norm, lang)
-                               VALUES (?, ?, ?, ?)""",
-                            (plant_id, name, name_norm, lang)
+                            """INSERT INTO plant_common_names
+                               (plant_id, common_name, common_name_norm, lang, is_preferred)
+                               VALUES (?, ?, ?, ?, ?)""",
+                            (plant_id, name, name_norm, lang, 1 if is_preferred else 0)
                         )
                     except sqlite3.IntegrityError:
                         # Skip duplicate common names for this plant
@@ -310,12 +418,20 @@ def get_plant(plant_id: int) -> Optional[Dict[str, Any]]:
             'id': plant['id'],
             'scientific_name': plant['scientific_name'],
             'scientific_name_norm': plant['scientific_name_norm'],
+            'base_species': plant['base_species'] if 'base_species' in plant.keys() else '',
+            'base_species_norm': plant['base_species_norm'] if 'base_species_norm' in plant.keys() else '',
+            'infraspecific_detail': plant['infraspecific_detail'] if 'infraspecific_detail' in plant.keys() else '',
             'family': plant['family'],
             'default_category': plant['default_category'],
             'created_at': plant['created_at'],
             'updated_at': plant['updated_at'],
             'common_names': [
-                {'id': cn['id'], 'name': cn['common_name'], 'lang': cn['lang']}
+                {
+                    'id': cn['id'],
+                    'name': cn['common_name'],
+                    'lang': cn['lang'],
+                    'is_preferred': bool(cn['is_preferred']) if 'is_preferred' in cn.keys() else False
+                }
                 for cn in common_names
             ],
             'synonyms': [
@@ -356,7 +472,9 @@ def update_plant(
     plant_id: int,
     scientific_name: Optional[str] = None,
     family: Optional[str] = None,
-    default_category: Optional[str] = None
+    default_category: Optional[str] = None,
+    base_species: Optional[str] = None,
+    infraspecific_detail: Optional[str] = None
 ) -> Tuple[bool, Optional[str]]:
     """
     Update a plant's basic information.
@@ -366,6 +484,8 @@ def update_plant(
         scientific_name: New scientific name (optional)
         family: New family (optional)
         default_category: New default category (optional)
+        base_species: New base species for rotation grouping (optional)
+        infraspecific_detail: New infraspecific detail (optional)
 
     Returns:
         Tuple of (success, error_message)
@@ -413,6 +533,17 @@ def update_plant(
         if default_category is not None:
             updates.append("default_category = ?")
             params.append(default_category.strip())
+
+        if base_species is not None:
+            base_species = base_species.strip()
+            updates.append("base_species = ?")
+            params.append(base_species)
+            updates.append("base_species_norm = ?")
+            params.append(normalize_name(base_species))
+
+        if infraspecific_detail is not None:
+            updates.append("infraspecific_detail = ?")
+            params.append(infraspecific_detail.strip())
 
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")
@@ -473,9 +604,16 @@ def delete_plant(plant_id: int, check_crop_links: bool = True) -> Tuple[bool, Op
 # Common Names CRUD
 # ========================================
 
-def add_common_name(plant_id: int, name: str, lang: str = 'fr') -> Tuple[Optional[int], Optional[str]]:
+def add_common_name(plant_id: int, name: str, lang: str = 'fr', is_preferred: bool = False) -> Tuple[Optional[int], Optional[str]]:
     """
     Add a common name to a plant.
+
+    Args:
+        plant_id: ID of the plant
+        name: The common name to add
+        lang: Language code (default 'fr')
+        is_preferred: If True, this becomes the preferred name for this language
+                      (clears is_preferred on other names in same language)
 
     Returns:
         Tuple of (common_name_id, error_message)
@@ -507,10 +645,17 @@ def add_common_name(plant_id: int, name: str, lang: str = 'fr') -> Tuple[Optiona
         if existing:
             return None, "Ce nom commun existe déjà pour cette plante."
 
+        # If this is preferred, clear is_preferred on other names in same language
+        if is_preferred:
+            cursor.execute(
+                "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ? AND lang = ?",
+                (plant_id, lang)
+            )
+
         cursor.execute(
-            """INSERT INTO plant_common_names (plant_id, common_name, common_name_norm, lang)
-               VALUES (?, ?, ?, ?)""",
-            (plant_id, name, name_norm, lang)
+            """INSERT INTO plant_common_names (plant_id, common_name, common_name_norm, lang, is_preferred)
+               VALUES (?, ?, ?, ?, ?)""",
+            (plant_id, name, name_norm, lang, 1 if is_preferred else 0)
         )
         cn_id = cursor.lastrowid
         conn.commit()
@@ -524,9 +669,20 @@ def add_common_name(plant_id: int, name: str, lang: str = 'fr') -> Tuple[Optiona
         conn.close()
 
 
-def update_common_name(common_name_id: int, name: str, lang: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+def update_common_name(
+    common_name_id: int,
+    name: str,
+    lang: Optional[str] = None,
+    is_preferred: Optional[bool] = None
+) -> Tuple[bool, Optional[str]]:
     """
     Update a common name.
+
+    Args:
+        common_name_id: ID of the common name to update
+        name: New name value
+        lang: New language code (optional)
+        is_preferred: If True, this becomes the preferred name for this language
 
     Returns:
         Tuple of (success, error_message)
@@ -558,10 +714,31 @@ def update_common_name(common_name_id: int, name: str, lang: Optional[str] = Non
         if dup:
             return False, "Ce nom commun existe déjà pour cette plante."
 
-        if lang is not None:
+        # Determine the effective language
+        effective_lang = lang if lang is not None else existing['lang']
+
+        # If setting as preferred, clear is_preferred on other names in same language
+        if is_preferred:
+            cursor.execute(
+                "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ? AND lang = ? AND id != ?",
+                (existing['plant_id'], effective_lang, common_name_id)
+            )
+
+        # Build update query
+        if lang is not None and is_preferred is not None:
+            cursor.execute(
+                "UPDATE plant_common_names SET common_name = ?, common_name_norm = ?, lang = ?, is_preferred = ? WHERE id = ?",
+                (name, name_norm, lang, 1 if is_preferred else 0, common_name_id)
+            )
+        elif lang is not None:
             cursor.execute(
                 "UPDATE plant_common_names SET common_name = ?, common_name_norm = ?, lang = ? WHERE id = ?",
                 (name, name_norm, lang, common_name_id)
+            )
+        elif is_preferred is not None:
+            cursor.execute(
+                "UPDATE plant_common_names SET common_name = ?, common_name_norm = ?, is_preferred = ? WHERE id = ?",
+                (name, name_norm, 1 if is_preferred else 0, common_name_id)
             )
         else:
             cursor.execute(
@@ -1031,7 +1208,7 @@ def export_plants_json() -> Dict[str, Any]:
         for plant in plants:
             # Get common names
             common_names = cursor.execute(
-                "SELECT common_name, lang FROM plant_common_names WHERE plant_id = ? ORDER BY lang, common_name",
+                "SELECT common_name, lang, is_preferred FROM plant_common_names WHERE plant_id = ? ORDER BY lang, common_name",
                 (plant['id'],)
             ).fetchall()
 
@@ -1043,9 +1220,18 @@ def export_plants_json() -> Dict[str, Any]:
 
             result.append({
                 'scientific_name': plant['scientific_name'],
+                'base_species': plant['base_species'] if 'base_species' in plant.keys() else '',
+                'infraspecific_detail': plant['infraspecific_detail'] if 'infraspecific_detail' in plant.keys() else '',
                 'family': plant['family'],
                 'default_category': plant['default_category'],
-                'common_names': [{'name': cn['common_name'], 'lang': cn['lang']} for cn in common_names],
+                'common_names': [
+                    {
+                        'name': cn['common_name'],
+                        'lang': cn['lang'],
+                        'is_preferred': bool(cn['is_preferred']) if 'is_preferred' in cn.keys() else False
+                    }
+                    for cn in common_names
+                ],
                 'synonyms': [s['synonym'] for s in synonyms]
             })
 
@@ -1238,3 +1424,214 @@ def get_plant_suggestions(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         }
         for r in results
     ]
+
+
+# ========================================
+# Preferred Name and Species Lookup
+# ========================================
+
+def get_preferred_name(plant_id: int, lang: str = 'fr') -> Optional[str]:
+    """
+    Get the preferred display name for a plant in the given language.
+
+    Falls back to:
+    1. First common name in that language if no preferred is set
+    2. Scientific name if no common names exist
+
+    Args:
+        plant_id: ID of the plant
+        lang: Language code (default 'fr')
+
+    Returns:
+        The preferred name string, or None if plant not found
+    """
+    conn = get_plant_db()
+    try:
+        # First try preferred name in requested language
+        result = conn.execute("""
+            SELECT common_name FROM plant_common_names
+            WHERE plant_id = ? AND lang = ? AND is_preferred = 1
+        """, (plant_id, lang)).fetchone()
+
+        if result:
+            return result[0]
+
+        # Fallback: first common name in that language
+        result = conn.execute("""
+            SELECT common_name FROM plant_common_names
+            WHERE plant_id = ? AND lang = ?
+            ORDER BY id LIMIT 1
+        """, (plant_id, lang)).fetchone()
+
+        if result:
+            return result[0]
+
+        # Final fallback: scientific name
+        result = conn.execute(
+            "SELECT scientific_name FROM plants WHERE id = ?", (plant_id,)
+        ).fetchone()
+
+        return result[0] if result else None
+
+    finally:
+        conn.close()
+
+
+def set_preferred_name(common_name_id: int) -> Tuple[bool, Optional[str]]:
+    """
+    Set a common name as the preferred name for its plant and language.
+
+    Automatically clears is_preferred on other names in the same language.
+
+    Args:
+        common_name_id: ID of the common name to set as preferred
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    conn = get_plant_db()
+    cursor = conn.cursor()
+
+    try:
+        # Get the common name details
+        cn = cursor.execute(
+            "SELECT plant_id, lang FROM plant_common_names WHERE id = ?",
+            (common_name_id,)
+        ).fetchone()
+
+        if not cn:
+            return False, "Nom commun introuvable."
+
+        # Clear is_preferred on other names in same language
+        cursor.execute(
+            "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ? AND lang = ?",
+            (cn['plant_id'], cn['lang'])
+        )
+
+        # Set this one as preferred
+        cursor.execute(
+            "UPDATE plant_common_names SET is_preferred = 1 WHERE id = ?",
+            (common_name_id,)
+        )
+
+        conn.commit()
+        return True, None
+
+    except Exception as e:
+        conn.rollback()
+        return False, f"Erreur: {str(e)}"
+    finally:
+        conn.close()
+
+
+def get_plants_by_species(base_species: str) -> List[Dict[str, Any]]:
+    """
+    Get all plants that share the same base species.
+
+    Useful for rotation logic to find related varieties/cultivars.
+
+    Args:
+        base_species: The base species name (e.g., "Capsicum annuum")
+
+    Returns:
+        List of plant dicts with id, scientific_name, infraspecific_detail
+    """
+    if not base_species:
+        return []
+
+    base_species_norm = normalize_name(base_species)
+    conn = get_plant_db()
+
+    try:
+        plants = conn.execute("""
+            SELECT id, scientific_name, infraspecific_detail, family, default_category
+            FROM plants
+            WHERE base_species_norm = ?
+            ORDER BY scientific_name
+        """, (base_species_norm,)).fetchall()
+
+        return [dict(p) for p in plants]
+
+    finally:
+        conn.close()
+
+
+def get_plants_by_family(family: str) -> List[Dict[str, Any]]:
+    """
+    Get all plants in a botanical family.
+
+    Useful for rotation logic to find plants that should not follow each other.
+
+    Args:
+        family: The botanical family name (e.g., "Solanaceae")
+
+    Returns:
+        List of plant dicts with id, scientific_name, base_species
+    """
+    if not family:
+        return []
+
+    conn = get_plant_db()
+
+    try:
+        plants = conn.execute("""
+            SELECT id, scientific_name, base_species, infraspecific_detail, default_category
+            FROM plants
+            WHERE family = ?
+            ORDER BY scientific_name
+        """, (family,)).fetchall()
+
+        return [dict(p) for p in plants]
+
+    finally:
+        conn.close()
+
+
+def get_rotation_groups() -> Dict[str, Any]:
+    """
+    Get all plants organized by family and species for rotation planning.
+
+    Returns a structure like:
+    {
+        'by_family': {
+            'Solanaceae': [plant_ids...],
+            'Brassicaceae': [plant_ids...],
+        },
+        'by_species': {
+            'capsicum annuum': [plant_ids...],
+            'brassica oleracea': [plant_ids...],
+        }
+    }
+    """
+    conn = get_plant_db()
+
+    try:
+        plants = conn.execute("""
+            SELECT id, family, base_species_norm
+            FROM plants
+            WHERE family != '' OR base_species_norm != ''
+        """).fetchall()
+
+        by_family: Dict[str, List[int]] = {}
+        by_species: Dict[str, List[int]] = {}
+
+        for p in plants:
+            plant_id = p['id']
+
+            if p['family']:
+                if p['family'] not in by_family:
+                    by_family[p['family']] = []
+                by_family[p['family']].append(plant_id)
+
+            if p['base_species_norm']:
+                if p['base_species_norm'] not in by_species:
+                    by_species[p['base_species_norm']] = []
+                by_species[p['base_species_norm']].append(plant_id)
+
+        return {
+            'by_family': by_family,
+            'by_species': by_species
+        }
+
+    finally:
+        conn.close()

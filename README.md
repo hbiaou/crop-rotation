@@ -23,18 +23,31 @@ A web application for planning and managing crop rotation in market gardens. Bui
 - **⚙️ Settings** — Manage gardens, crops, rotation sequence, cycles per year, and database backups
 - **💾 Auto-Backups** — Database is backed up automatically before cycle generation and exports
 
-### 🌱 Plant Database (New in v1.1.0)
+### 🌱 Plant Database (v1.1.0+)
 
 A separate, canonical database for managing plant information:
 
 - **Scientific Names** — Store plants with their proper scientific names (e.g., *Solanum lycopersicum*)
+- **Infraspecific Taxa** — Support for varieties, cultivar groups, and subspecies (e.g., *Capsicum annuum* Grossum Group for sweet peppers vs *Capsicum annuum* for hot peppers)
+- **Base Species Grouping** — Plants share a `base_species` field enabling species-level rotation rules while allowing distinct entries for different market forms
 - **Common Names** — Multiple common names per plant in different languages (French, English, local dialects)
+- **Preferred Names** — Mark one common name per language as the preferred UI display name
 - **Synonyms** — Track alternative scientific names for easier searching
 - **Smart Search** — Search across scientific names, common names, and synonyms with ranked results
 - **Duplicate Detection** — Prevents duplicate entries using normalized name comparison
 - **Auto-fill Crops** — When adding crops, type to search the plant database and auto-fill family and category
 - **JSON Import/Export** — Download your plant database as JSON, or import from external sources (merge or replace modes)
 - **Separate Storage** — Plant data stored in its own SQLite database (`plant_database.db`), keeping it independent from rotation data
+
+### 🔄 Smart Rotation Algorithm (v1.2.0+)
+
+The rotation engine now applies penalties at three levels for disease management:
+
+- **Same Crop Penalty** — Strongest penalty when the exact same crop was planted recently
+- **Same Species Penalty** — Medium penalty for crops sharing the same base species (e.g., hot pepper after sweet pepper)
+- **Same Family Penalty** — Lighter penalty for crops in the same botanical family (e.g., tomato after pepper — both Solanaceae)
+
+This enables proper rotation planning for crops like Brassicas (cabbage, broccoli, cauliflower all share *Brassica oleracea*) and peppers (multiple *Capsicum annuum* varieties).
 
 ## Quick Start
 

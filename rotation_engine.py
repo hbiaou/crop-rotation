@@ -5,23 +5,34 @@ This module implements:
 - Category rotation: advancing each bed one step in the configured rotation sequence
 - Smart crop assignment with 5-cycle lookback and distance-weighted scoring
 - Distribution resolution: converting percentage targets to absolute bed counts
+- Family and species-level rotation penalties for disease management
 
 Algorithm details:
 - Rotation sequence wraps: last category → first category
 - Same-category repeat is forbidden
-- Penalty table for variety cycling:
-    1 cycle ago = -50, 2 = -30, 3 = -15, 4 = -5, 5 = -1
+- Penalty tables for rotation (same crop > same species > same family):
+    - Same crop: 1 cycle ago = -50, 2 = -30, 3 = -15, 4 = -5, 5 = -1
+    - Same species: 1 cycle ago = -35, 2 = -20, 3 = -10, 4 = -3
+    - Same family: 1 cycle ago = -20, 2 = -10, 3 = -5
 - Diversity bonus: +2 per past cycle with a different crop in same category
 """
 
+from collections import defaultdict
 from database import (
     get_db, get_setting
 )
 from utils.backup import backup_db
 
 
-# Penalty table: cycles ago → penalty
+# Penalty table: cycles ago → penalty (same exact crop)
 PENALTY_TABLE = {1: -50, 2: -30, 3: -15, 4: -5, 5: -1}
+
+# Species-level penalty: same species but different variety (e.g., hot pepper after sweet pepper)
+SPECIES_PENALTY_TABLE = {1: -35, 2: -20, 3: -10, 4: -3}
+
+# Family-level penalty: same family (e.g., tomato after pepper - both Solanaceae)
+FAMILY_PENALTY_TABLE = {1: -20, 2: -10, 3: -5}
+
 DIVERSITY_BONUS = 2
 LOOKBACK_CYCLES = 5
 
@@ -257,12 +268,13 @@ def resolve_distribution(percentages, total_beds):
 
 def assign_crops(garden_id, cycle):
     """
-    Smart crop assignment using 5-cycle lookback scoring.
+    Smart crop assignment using 5-cycle lookback scoring with family/species penalties.
 
     Algorithm per FEATURES_SPEC.md section F4:
     - For each category: get beds in category, crops with resolved target counts
     - For each crop (sorted by target count desc):
-      - Score each unassigned bed using penalty table + diversity bonus
+      - Score each unassigned bed using penalty tables + diversity bonus
+      - Penalties apply at three levels: same crop > same species > same family
       - Assign best-scoring beds to this crop
     - Tie-break: bed ID ascending (deterministic)
     - Update planned_crop_id in cycle_plans
@@ -316,6 +328,35 @@ def assign_crops(garden_id, cycle):
             past_cycles = all_cycle_list[cycle_idx + 1:cycle_idx + 1 + LOOKBACK_CYCLES]
         else:
             past_cycles = all_cycle_list[:LOOKBACK_CYCLES]
+
+        # Load crop family and species information for rotation penalties
+        # Join crops with plants table to get family and base_species
+        crop_taxonomy = conn.execute("""
+            SELECT c.id as crop_id, c.family as crop_family,
+                   p.family as plant_family, p.base_species_norm
+            FROM crops c
+            LEFT JOIN plants p ON c.plant_id = p.id
+        """).fetchall()
+
+        # Build lookup dictionaries for family and species
+        crop_to_family = {}
+        crop_to_species = {}
+        crops_by_family = defaultdict(set)
+        crops_by_species = defaultdict(set)
+
+        for row in crop_taxonomy:
+            crop_id = row['crop_id']
+            # Prefer plant family over crop family if available
+            family = row['plant_family'] or row['crop_family'] or ''
+            species = row['base_species_norm'] or ''
+
+            crop_to_family[crop_id] = family
+            crop_to_species[crop_id] = species
+
+            if family:
+                crops_by_family[family].add(crop_id)
+            if species:
+                crops_by_species[species].add(crop_id)
 
         # Process each category
         for category in categories:
@@ -387,6 +428,14 @@ def assign_crops(garden_id, cycle):
                 if target_count <= 0:
                     continue
 
+                # Get family and species for current crop
+                current_family = crop_to_family.get(crop_id, '')
+                current_species = crop_to_species.get(crop_id, '')
+
+                # Get sets of crops in same family/species (excluding current crop)
+                same_family_crops = crops_by_family.get(current_family, set()) - {crop_id} if current_family else set()
+                same_species_crops = crops_by_species.get(current_species, set()) - {crop_id} if current_species else set()
+
                 # Score each unassigned bed
                 scored_beds = []
                 for bed in cat_beds:
@@ -403,9 +452,20 @@ def assign_crops(garden_id, cycle):
                     else:
                         score = 0
                         for h in cat_history:
-                            if h['crop_id'] == crop_id:
-                                score += PENALTY_TABLE.get(h['cycles_ago'], 0)
+                            past_crop_id = h['crop_id']
+                            cycles_ago = h['cycles_ago']
+
+                            if past_crop_id == crop_id:
+                                # Same exact crop: heaviest penalty
+                                score += PENALTY_TABLE.get(cycles_ago, 0)
+                            elif past_crop_id in same_species_crops:
+                                # Same species, different variety (e.g., hot pepper after sweet pepper)
+                                score += SPECIES_PENALTY_TABLE.get(cycles_ago, 0)
+                            elif past_crop_id in same_family_crops:
+                                # Same family (e.g., tomato after pepper - both Solanaceae)
+                                score += FAMILY_PENALTY_TABLE.get(cycles_ago, 0)
                             else:
+                                # Different family: diversity bonus
                                 score += DIVERSITY_BONUS
 
                     scored_beds.append((score, sid, bed['plan_id']))

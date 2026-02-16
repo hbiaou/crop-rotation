@@ -25,6 +25,7 @@ from plant_database import (
     update_plant,
     delete_plant,
     add_common_name,
+    update_common_name,
     delete_common_name,
     add_synonym,
     delete_synonym,
@@ -32,7 +33,12 @@ from plant_database import (
     check_duplicate,
     export_plants_json,
     import_plants_json,
-    get_plant_count
+    get_plant_count,
+    get_preferred_name,
+    set_preferred_name,
+    get_plants_by_species,
+    get_plants_by_family,
+    get_rotation_groups
 )
 
 
@@ -484,3 +490,238 @@ class TestJSONExportImport:
         assert plant['family'] == "Solanacées"
         assert len(plant['common_names']) == 2
         assert len(plant['synonyms']) == 1
+
+
+# ========================================
+# Base Species and Infraspecific Tests
+# ========================================
+
+class TestBaseSpeciesInfraspecific:
+    """Tests for base_species, infraspecific_detail, and species-level operations."""
+
+    def test_create_plant_with_base_species(self, temp_plant_db):
+        """Test creating a plant with explicit base_species."""
+        plant_id, error = create_plant(
+            scientific_name="Capsicum annuum Grossum Group",
+            family="Solanaceae",
+            default_category="Fruit",
+            base_species="Capsicum annuum",
+            infraspecific_detail="Grossum Group"
+        )
+        assert plant_id is not None
+        assert error is None
+
+        plant = get_plant(plant_id)
+        assert plant['scientific_name'] == "Capsicum annuum Grossum Group"
+        assert plant['base_species'] == "Capsicum annuum"
+        assert plant['infraspecific_detail'] == "Grossum Group"
+
+    def test_create_plant_base_species_defaults_to_scientific_name(self, temp_plant_db):
+        """Test that base_species defaults to scientific_name when not provided."""
+        plant_id, _ = create_plant("Solanum lycopersicum", "Solanaceae", "Fruit")
+
+        plant = get_plant(plant_id)
+        assert plant['base_species'] == "Solanum lycopersicum"
+        assert plant['base_species_norm'] == "solanum lycopersicum"
+
+    def test_update_plant_base_species(self, temp_plant_db):
+        """Test updating base_species on an existing plant."""
+        plant_id, _ = create_plant("Brassica oleracea var. capitata")
+
+        success, error = update_plant(
+            plant_id,
+            base_species="Brassica oleracea",
+            infraspecific_detail="var. capitata"
+        )
+        assert success
+        assert error is None
+
+        plant = get_plant(plant_id)
+        assert plant['base_species'] == "Brassica oleracea"
+        assert plant['infraspecific_detail'] == "var. capitata"
+
+    def test_get_plants_by_species(self, temp_plant_db):
+        """Test finding plants that share the same base species."""
+        # Create multiple varieties of the same species
+        create_plant(
+            "Capsicum annuum Grossum Group",
+            base_species="Capsicum annuum",
+            infraspecific_detail="Grossum Group"
+        )
+        create_plant(
+            "Capsicum annuum",
+            base_species="Capsicum annuum"
+        )
+        create_plant(
+            "Solanum lycopersicum"  # Different species
+        )
+
+        plants = get_plants_by_species("Capsicum annuum")
+        assert len(plants) == 2
+
+        # Verify both Capsicum varieties are returned
+        names = [p['scientific_name'] for p in plants]
+        assert "Capsicum annuum Grossum Group" in names
+        assert "Capsicum annuum" in names
+
+    def test_get_plants_by_family(self, temp_plant_db):
+        """Test finding all plants in a botanical family."""
+        create_plant("Solanum lycopersicum", family="Solanaceae")
+        create_plant("Capsicum annuum", family="Solanaceae")
+        create_plant("Brassica oleracea", family="Brassicaceae")
+
+        solanaceae = get_plants_by_family("Solanaceae")
+        assert len(solanaceae) == 2
+
+        brassicaceae = get_plants_by_family("Brassicaceae")
+        assert len(brassicaceae) == 1
+
+    def test_get_rotation_groups(self, temp_plant_db):
+        """Test getting rotation groups organized by family and species."""
+        create_plant("Solanum lycopersicum", family="Solanaceae", base_species="Solanum lycopersicum")
+        create_plant("Capsicum annuum", family="Solanaceae", base_species="Capsicum annuum")
+        create_plant("Capsicum annuum Grossum Group", family="Solanaceae", base_species="Capsicum annuum")
+
+        groups = get_rotation_groups()
+
+        assert 'by_family' in groups
+        assert 'by_species' in groups
+
+        # All three plants should be in Solanaceae
+        assert len(groups['by_family']['Solanaceae']) == 3
+
+        # Two plants share the same base species (Capsicum annuum)
+        assert len(groups['by_species']['capsicum annuum']) == 2
+
+
+# ========================================
+# Preferred Name Tests
+# ========================================
+
+class TestPreferredName:
+    """Tests for preferred name functionality."""
+
+    def test_create_plant_first_common_name_is_preferred(self, temp_plant_db):
+        """Test that the first common name in each language is automatically preferred."""
+        plant_id, _ = create_plant(
+            "Solanum lycopersicum",
+            common_names=[
+                {"name": "Tomate", "lang": "fr"},
+                {"name": "Tomate cerise", "lang": "fr"},
+                {"name": "Tomato", "lang": "en"}
+            ]
+        )
+
+        plant = get_plant(plant_id)
+        fr_names = [cn for cn in plant['common_names'] if cn['lang'] == 'fr']
+        en_names = [cn for cn in plant['common_names'] if cn['lang'] == 'en']
+
+        # First French name should be preferred
+        tomate = next(cn for cn in fr_names if cn['name'] == 'Tomate')
+        assert tomate['is_preferred'] is True
+
+        # Second French name should not be preferred
+        tomate_cerise = next(cn for cn in fr_names if cn['name'] == 'Tomate cerise')
+        assert tomate_cerise['is_preferred'] is False
+
+        # English name should be preferred (first in that language)
+        tomato = en_names[0]
+        assert tomato['is_preferred'] is True
+
+    def test_add_common_name_with_is_preferred(self, temp_plant_db):
+        """Test adding a common name and setting it as preferred."""
+        plant_id, _ = create_plant("Solanum lycopersicum")
+        add_common_name(plant_id, "Tomate", "fr")
+        add_common_name(plant_id, "Tomate rouge", "fr", is_preferred=True)
+
+        plant = get_plant(plant_id)
+        fr_names = [cn for cn in plant['common_names'] if cn['lang'] == 'fr']
+
+        # Tomate rouge should now be preferred
+        tomate_rouge = next(cn for cn in fr_names if cn['name'] == 'Tomate rouge')
+        assert tomate_rouge['is_preferred'] is True
+
+        # Tomate should no longer be preferred
+        tomate = next(cn for cn in fr_names if cn['name'] == 'Tomate')
+        assert tomate['is_preferred'] is False
+
+    def test_get_preferred_name(self, temp_plant_db):
+        """Test getting the preferred name for a plant."""
+        plant_id, _ = create_plant(
+            "Solanum lycopersicum",
+            common_names=[
+                {"name": "Tomate", "lang": "fr"},
+                {"name": "Tomato", "lang": "en"}
+            ]
+        )
+
+        # Get preferred French name
+        fr_name = get_preferred_name(plant_id, "fr")
+        assert fr_name == "Tomate"
+
+        # Get preferred English name
+        en_name = get_preferred_name(plant_id, "en")
+        assert en_name == "Tomato"
+
+    def test_get_preferred_name_fallback_to_scientific(self, temp_plant_db):
+        """Test that get_preferred_name falls back to scientific name if no common names."""
+        plant_id, _ = create_plant("Solanum lycopersicum")
+
+        name = get_preferred_name(plant_id, "fr")
+        assert name == "Solanum lycopersicum"
+
+    def test_set_preferred_name(self, temp_plant_db):
+        """Test setting a common name as preferred."""
+        plant_id, _ = create_plant("Solanum lycopersicum")
+        cn_id1, _ = add_common_name(plant_id, "Tomate", "fr")
+        cn_id2, _ = add_common_name(plant_id, "Tomate rouge", "fr")
+
+        # Set second name as preferred
+        success, error = set_preferred_name(cn_id2)
+        assert success
+        assert error is None
+
+        # Verify it's now preferred
+        assert get_preferred_name(plant_id, "fr") == "Tomate rouge"
+
+    def test_update_common_name_with_is_preferred(self, temp_plant_db):
+        """Test updating a common name to make it preferred."""
+        plant_id, _ = create_plant("Solanum lycopersicum")
+        cn_id1, _ = add_common_name(plant_id, "Tomate", "fr")
+        cn_id2, _ = add_common_name(plant_id, "Tomate rouge", "fr")
+
+        # Update second name to be preferred
+        success, _ = update_common_name(cn_id2, "Tomate rouge", is_preferred=True)
+        assert success
+
+        # Verify it's now preferred
+        plant = get_plant(plant_id)
+        tomate_rouge = next(cn for cn in plant['common_names'] if cn['name'] == 'Tomate rouge')
+        assert tomate_rouge['is_preferred'] is True
+
+    def test_export_includes_is_preferred(self, temp_plant_db):
+        """Test that JSON export includes is_preferred field."""
+        plant_id, _ = create_plant(
+            "Solanum lycopersicum",
+            common_names=[{"name": "Tomate", "lang": "fr", "is_preferred": True}]
+        )
+
+        data = export_plants_json()
+
+        common_names = data['plants'][0]['common_names']
+        assert len(common_names) == 1
+        assert common_names[0]['is_preferred'] is True
+
+    def test_export_includes_base_species(self, temp_plant_db):
+        """Test that JSON export includes base_species and infraspecific_detail."""
+        plant_id, _ = create_plant(
+            "Capsicum annuum Grossum Group",
+            base_species="Capsicum annuum",
+            infraspecific_detail="Grossum Group"
+        )
+
+        data = export_plants_json()
+
+        plant_data = data['plants'][0]
+        assert plant_data['base_species'] == "Capsicum annuum"
+        assert plant_data['infraspecific_detail'] == "Grossum Group"
