@@ -13,8 +13,21 @@ from flask import Blueprint, flash, redirect, url_for, send_file
 
 from utils.backup import backup_db
 from utils.export import generate_excel, generate_excel_all
+from database import get_gardens, get_cycles
+from flask import render_template, request
 
 export_bp = Blueprint('export', __name__, url_prefix='/export')
+
+
+@export_bp.route('/')
+def index():
+    """Export page with options."""
+    gardens = get_gardens()
+    
+    # Get all distinct cycles across all gardens
+    cycles = get_cycles()
+    
+    return render_template('export.html', gardens=gardens, cycles=cycles)
 
 
 @export_bp.route('/excel/<int:garden_id>/<cycle>')

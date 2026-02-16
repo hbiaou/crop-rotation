@@ -18,7 +18,13 @@
 <div class="tabs-container">
     <div class="tabs-nav" role="tablist">
         <button class="tab-btn active" data-tab="jardins" role="tab" aria-selected="true">
-            <span class="tab-icon">🌿</span> Jardins
+            <span class="tab-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V19.728A2.25 2.25 0 0 0 2.227 21H3ZM10 13c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V19.728A2.25 2.25 0 0 0 9.227 21H10Z" />
+                    <path
+                        d="M17 13c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V19.728A2.25 2.25 0 0 0 16.227 21H17Z" />
+                </svg></span> Jardins
         </button>
         <button class="tab-btn" data-tab="cultures" role="tab" aria-selected="false">
             <span class="tab-icon">🌾</span> Cultures
@@ -29,8 +35,17 @@
         <button class="tab-btn" data-tab="cycles" role="tab" aria-selected="false">
             <span class="tab-icon">📅</span> Cycles
         </button>
+        <button class="tab-btn" data-tab="distribution" role="tab" aria-selected="false">
+            <span class="tab-icon">📊</span> Répartition
+        </button>
         <button class="tab-btn" data-tab="sauvegardes" role="tab" aria-selected="false">
             <span class="tab-icon">💾</span> Sauvegardes
+        </button>
+        <button class="tab-btn tab-btn-danger" data-tab="danger" role="tab" aria-selected="false">
+            <span class="tab-icon">⚠️</span> Zone de Danger
+        </button>
+        <button class="tab-btn" data-tab="import" role="tab" aria-selected="false">
+            <span class="tab-icon">📥</span> Import
         </button>
     </div>
 
@@ -224,7 +239,12 @@
             <div class="crops-list">
                 {% for crop in cat_crops %}
                 <div class="crop-item">
-                    <span class="crop-name">{{ crop.crop_name }}</span>
+                    <div class="d-flex flex-col">
+                        <span class="crop-name">{{ crop.crop_name }}</span>
+                        {% if crop.family %}
+                        <span class="text-muted text-xs">({{ crop.family }})</span>
+                        {% endif %}
+                    </div>
                     <div class="crop-actions d-flex gap-sm">
                         <!-- Category change -->
                         <form method="POST" action="{{ url_for('settings.crop_category') }}"
@@ -274,6 +294,10 @@
                             <option value="{{ cat }}">{{ cat }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Famille botanique</label>
+                        <input type="text" name="family" class="form-input" placeholder="Ex: Solanacées">
                     </div>
                 </div>
                 <div class="mt-md">
@@ -377,9 +401,54 @@
         </div>
     </div>
 </div>
+</div>
 
 <!-- ============================================
-         TAB 5: SAUVEGARDES
+         TAB 5: REPARTITION PAR DEFAUT
+         ============================================ -->
+<div class="tab-panel" id="tab-distribution" role="tabpanel">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">📊 Répartition par défaut</h2>
+            <p class="text-muted">Définissez les pourcentages cibles par défaut pour chaque culture. Ces valeurs seront
+                utilisées lors de la génération de nouveaux cycles.</p>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.distribution_save') }}">
+                {% for cat in categories %}
+                <div class="category-section mb-lg">
+                    <h3 class="cat-title mb-md"><span class="cat-badge cat-{{ cat|lower }}">{{ cat }}</span></h3>
+
+                    <div class="form-row form-row-3">
+                        {% set cat_crops = crops_by_category[cat] %}
+                        {% if cat_crops %}
+                        {% for crop in cat_crops %}
+                        <div class="form-group">
+                            <label class="form-label">{{ crop.crop_name }} (%)</label>
+                            <input type="number" name="crop_{{ crop.id }}" class="form-input"
+                                value="{{ distribution_defaults.get(cat, {}).get(crop.crop_name, 0)|int }}" min="0"
+                                max="100" step="1">
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <p class="text-muted">Aucune culture.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="mt-lg">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">💾</span> {{ i18n.buttons.save }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================
+         TAB 6: SAUVEGARDES
          ============================================ -->
 <div class="tab-panel" id="tab-sauvegardes" role="tabpanel">
     <div class="card">
@@ -436,6 +505,73 @@
         </div>
     </div>
 </div>
+
+<!-- ============================================
+         TAB 6: DANGER ZONE
+         ============================================ -->
+<div class="tab-panel" id="tab-danger" role="tabpanel">
+    {% for gd in garden_data %}
+    <div class="card border-danger">
+        <div class="card-header bg-danger-light">
+            <h2 class="card-title text-danger">⚠️ Réinitialiser {{ gd.garden.garden_code }} — {{ gd.garden.name }}</h2>
+        </div>
+        <div class="card-body">
+            <p class="mb-md">
+                Cette action va <strong>supprimer définitivement tout l'historique</strong> (cycles passés, plans
+                futurs,
+                récoltes) pour ce jardin.
+                Le jardin lui-même et sa configuration (planches, dimensions) seront conservés.
+            </p>
+            <p class="mb-lg">
+                Utilisez cette option si vous souhaitez recommencer la rotation à zéro (ex: pour corriger un mauvais
+                cycle
+                de départ).
+            </p>
+
+            <form method="POST" action="{{ url_for('settings.garden_reset') }}"
+                onsubmit="return confirm('Êtes-vous ABSOLIMENT sûr de vouloir effacer tout l\'historique de ce jardin ? Cette action est irréversible.');">
+                <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
+                <button type="submit" class="btn btn-danger">
+                    💣 Tout effacer et recommencer à zéro
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ============================================
+         TAB 7: IMPORT
+         ============================================ -->
+<div class="tab-panel" id="tab-import" role="tabpanel">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">📥 Importer des Données</h2>
+        </div>
+        <div class="card-body">
+            <p class="mb-md">
+                Vous pouvez importer un fichier JSON contenant les données d'un cycle passé.
+                Cela est utile pour restaurer des sauvegardes manuelles ou importer des données générées.
+            </p>
+
+            <div class="alert alert-info">
+                <strong>Format attendu :</strong> Un fichier JSON avec <code>garden_code</code>, <code>cycle</code>, et
+                une liste de <code>beds</code>.
+            </div>
+
+            <form method="POST" action="{{ url_for('settings.import_cycle') }}" enctype="multipart/form-data"
+                class="mt-md">
+                <div class="form-group">
+                    <label for="importFile">Fichier JSON</label>
+                    <input type="file" id="importFile" name="file" accept=".json" required class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">📤</span> Importer
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 </div>
 {% endblock %}
 
@@ -460,16 +596,25 @@
             var tabId = 'tab-' + this.getAttribute('data-tab');
             document.getElementById(tabId).classList.add('active');
 
-            // Save to URL hash
-            window.location.hash = this.getAttribute('data-tab');
+            // Update URL with query param instead of hash
+            var newUrl = new URL(window.location);
+            newUrl.searchParams.set('tab', this.getAttribute('data-tab'));
+            window.history.pushState({}, '', newUrl);
         });
     });
 
-    // Restore tab from URL hash
+    // Restore tab from URL query param or hash
     (function () {
-        var hash = window.location.hash.replace('#', '');
-        if (hash) {
-            var btn = document.querySelector('.tab-btn[data-tab="' + hash + '"]');
+        var params = new URLSearchParams(window.location.search);
+        var tabName = params.get('tab');
+
+        // Fallback to hash if no query param
+        if (!tabName && window.location.hash) {
+            tabName = window.location.hash.replace('#', '');
+        }
+
+        if (tabName) {
+            var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
             if (btn) btn.click();
         }
     })();
@@ -605,5 +750,47 @@
 
     // Initialize cycle preview on load
     updateCyclePreview();
+
+    // ========================================
+    // Cycle Deletion Logic
+    // ========================================
+    var gardenCyclesMap = {
+        {% for g in garden_data %}
+    "{{ g.garden.id }}": [{% for c in g.cycles %}"{{ c }}", {% endfor %}],
+    {% endfor %}
+    };
+
+    function updateDeleteCycleOptions() {
+        var gardenSelect = document.getElementById('deleteCycleGardenSelect');
+        var cycleSelect = document.getElementById('deleteCycleSelect');
+        var hiddenInput = document.getElementById('deleteCycleGardenId');
+        var submitBtn = document.getElementById('deleteCycleBtn');
+
+        var gardenId = gardenSelect.value;
+        hiddenInput.value = gardenId;
+
+        // Clear current options
+        cycleSelect.innerHTML = '<option value="">-- Choisir un cycle --</option>';
+
+        if (gardenId && gardenCyclesMap[gardenId] && gardenCyclesMap[gardenId].length > 0) {
+            var cycles = gardenCyclesMap[gardenId];
+            cycles.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c;
+                opt.text = c;
+                cycleSelect.appendChild(opt);
+            });
+            cycleSelect.disabled = false;
+            submitBtn.disabled = false;
+        } else {
+            cycleSelect.disabled = true;
+            submitBtn.disabled = true;
+            if (gardenId) {
+                var opt = document.createElement('option');
+                opt.text = "Aucun cycle trouvé";
+                cycleSelect.appendChild(opt);
+            }
+        }
+    }
 </script>
 {% endblock %}

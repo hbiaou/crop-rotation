@@ -25,9 +25,12 @@ from database import (
     get_rotation_sequence, get_garden_stats, get_categories,
     create_garden, update_garden, delete_garden, toggle_sub_bed_reserve,
     create_crop, delete_crop, update_crop_category,
-    save_rotation_sequence, update_setting,
+    create_crop, delete_crop, update_crop_category,
+    save_rotation_sequence, update_setting, reset_garden_history,
+    import_garden_cycle_data
 )
 from utils.backup import backup_db, list_backups, restore_db
+import json
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
@@ -40,6 +43,11 @@ def index():
     categories = get_categories()
     rotation = get_rotation_sequence()
     cycles_per_year = get_setting('cycles_per_year', '2')
+    distribution_defaults_json = get_setting('distribution_defaults', '{}')
+    try:
+        distribution_defaults = json.loads(distribution_defaults_json)
+    except:
+        distribution_defaults = {}
     backups = list_backups()
 
     # Build garden stats with sub-beds for the reserve grid
@@ -47,10 +55,12 @@ def index():
     for g in gardens:
         stats = get_garden_stats(g['id'])
         sub_beds = get_sub_beds(g['id'])
+        cycles = get_cycles(g['id'])
         garden_data.append({
             'garden': g,
             'stats': stats,
             'sub_beds': sub_beds,
+            'cycles': cycles,
         })
 
     # Group crops by category
@@ -66,6 +76,7 @@ def index():
         categories=categories,
         rotation=rotation,
         cycles_per_year=cycles_per_year,
+        distribution_defaults=distribution_defaults,
         backups=backups,
     )
 
@@ -86,11 +97,11 @@ def garden_add():
 
     if not all([garden_code, name, beds, bed_length_m, sub_beds_per_bed]):
         flash("Veuillez remplir tous les champs obligatoires.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='jardins'))
 
     if beds <= 0 or sub_beds_per_bed <= 0:
         flash("Le nombre de planches et sous-planches doit être positif.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='jardins'))
 
     result = create_garden(garden_code, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed)
     if result:
@@ -98,7 +109,7 @@ def garden_add():
     else:
         flash(f"Erreur : le code jardin « {garden_code} » existe déjà.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='jardins'))
 
 
 @settings_bp.route('/garden/edit', methods=['POST'])
@@ -113,7 +124,7 @@ def garden_edit():
 
     if not all([garden_id, name, beds, bed_length_m, sub_beds_per_bed]):
         flash("Veuillez remplir tous les champs obligatoires.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='jardins'))
 
     result = update_garden(garden_id, name, beds, bed_length_m, bed_width_m, sub_beds_per_bed)
     if result:
@@ -121,7 +132,7 @@ def garden_edit():
     else:
         flash("Erreur lors de la mise à jour du jardin.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='jardins'))
 
 
 @settings_bp.route('/garden/delete', methods=['POST'])
@@ -130,7 +141,7 @@ def garden_delete():
     garden_id = request.form.get('garden_id', type=int)
     if not garden_id:
         flash("Jardin non spécifié.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='jardins'))
 
     success, error = delete_garden(garden_id)
     if success:
@@ -138,7 +149,87 @@ def garden_delete():
     else:
         flash(error or "Erreur lors de la suppression du jardin.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='jardins'))
+
+
+@settings_bp.route('/garden/reset', methods=['POST'])
+def garden_reset():
+    """Reset a garden's history (delete all cycles)."""
+    garden_id = request.form.get('garden_id', type=int)
+    if not garden_id:
+        flash("Jardin non spécifié.", 'error')
+        return redirect(url_for('settings.index', tab='danger'))
+
+    if not garden:
+        flash("Jardin introuvable.", 'error')
+        return redirect(url_for('settings.index', tab='danger'))
+
+    if reset_garden_history(garden_id):
+        flash(f"Historique du jardin « {garden['name']} » réinitialisé avec succès.", 'success')
+    else:
+        flash("Erreur lors de la réinitialisation de l'historique.", 'error')
+
+    return redirect(url_for('settings.index', tab='danger'))
+
+
+@settings_bp.route('/cycle/delete', methods=['POST'])
+def cycle_delete():
+    """Delete a specific cycle for a garden."""
+    garden_id = request.form.get('garden_id', type=int)
+    cycle = request.form.get('cycle', '').strip()
+
+    if not garden_id or not cycle:
+        flash("Jardin ou cycle non spécifié.", 'error')
+        return redirect(url_for('settings.index', tab='danger'))
+    
+    from database import delete_cycle_plans, delete_distribution_profiles
+
+    # Check if garden exists
+    garden = get_garden(garden_id)
+    if not garden:
+        flash("Jardin introuvable.", 'error')
+        return redirect(url_for('settings.index', tab='danger'))
+
+    # Delete cycle data
+    # We delete plans and distribution profiles
+    plans_ok = delete_cycle_plans(garden_id, cycle)
+    dist_ok = delete_distribution_profiles(garden_id, cycle)
+
+    if plans_ok and dist_ok:
+        flash(f"Cycle {cycle} pour le jardin « {garden['name']} » supprimé avec succès.", 'success')
+    else:
+        # If partial failure, warn user
+        flash("Erreur partielle lors de la suppression du cycle.", 'warning')
+
+    return redirect(url_for('settings.index', tab='danger'))
+
+
+@settings_bp.route('/import_cycle', methods=['POST'])
+def import_cycle():
+    """Import cycle data from JSON file."""
+    if 'file' not in request.files:
+        flash("Aucun fichier sélectionné.", 'error')
+        return redirect(url_for('settings.index', tab='import'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash("Aucun fichier sélectionné.", 'error')
+        return redirect(url_for('settings.index', tab='import'))
+    
+    if file:
+        try:
+            data = json.load(file)
+            success, message = import_garden_cycle_data(data)
+            if success:
+                flash(message, 'success')
+            else:
+                flash(f"Erreur lors de l'import : {message}", 'error')
+        except json.JSONDecodeError:
+            flash("Fichier JSON invalide.", 'error')
+        except Exception as e:
+            flash(f"Erreur inattendue : {str(e)}", 'error')
+            
+    return redirect(url_for('settings.index', tab='import'))
 
 
 @settings_bp.route('/sub-bed/toggle', methods=['POST'])
@@ -152,7 +243,7 @@ def sub_bed_toggle():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': 'ID manquant'}), 400
         flash("Sous-planche non spécifiée.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='jardins'))
 
     result = toggle_sub_bed_reserve(sub_bed_id, is_reserve_bool)
 
@@ -177,7 +268,7 @@ def sub_bed_toggle():
         flash("Statut de la sous-planche mis à jour.", 'success')
     else:
         flash("Erreur lors de la modification du statut.", 'error')
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='jardins'))
 
 
 # ========================================
@@ -192,15 +283,15 @@ def crop_add():
 
     if not crop_name or not category:
         flash("Veuillez remplir le nom et la catégorie.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='cultures'))
 
-    result = create_crop(crop_name, category)
+    result = create_crop(crop_name, category, family)
     if result:
         flash(f"Culture « {crop_name} » ajoutée avec succès.", 'success')
     else:
         flash(f"Erreur : la culture « {crop_name} » existe déjà.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='cultures'))
 
 
 @settings_bp.route('/crop/delete', methods=['POST'])
@@ -209,7 +300,7 @@ def crop_delete():
     crop_id = request.form.get('crop_id', type=int)
     if not crop_id:
         flash("Culture non spécifiée.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='cultures'))
 
     success, error = delete_crop(crop_id)
     if success:
@@ -217,7 +308,7 @@ def crop_delete():
     else:
         flash(error or "Erreur lors de la suppression.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='cultures'))
 
 
 @settings_bp.route('/crop/category', methods=['POST'])
@@ -228,7 +319,7 @@ def crop_category():
 
     if not crop_id or not new_category:
         flash("Veuillez spécifier la culture et la catégorie.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='cultures'))
 
     result = update_crop_category(crop_id, new_category)
     if result:
@@ -236,7 +327,7 @@ def crop_category():
     else:
         flash("Erreur lors de la mise à jour de la catégorie.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='cultures'))
 
 
 # ========================================
@@ -251,7 +342,7 @@ def rotation_save():
 
     if not categories or len(categories) < 2:
         flash("La séquence de rotation doit contenir au moins 2 catégories.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='rotation'))
 
     result = save_rotation_sequence(categories)
     if result:
@@ -259,7 +350,7 @@ def rotation_save():
     else:
         flash("Erreur lors de la mise à jour de la séquence.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='rotation'))
 
 
 # ========================================
@@ -272,7 +363,7 @@ def cycles_save():
     cycles = request.form.get('cycles_per_year', '2')
     if cycles not in ('1', '2', '3', '4'):
         flash("Valeur invalide pour les cycles par an.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='cycles'))
 
     result = update_setting('cycles_per_year', cycles)
     if result:
@@ -280,7 +371,7 @@ def cycles_save():
     else:
         flash("Erreur lors de la mise à jour.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='cycles'))
 
 
 # ========================================
@@ -296,7 +387,7 @@ def backup_create():
     else:
         flash("Erreur lors de la création de la sauvegarde.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='sauvegardes'))
 
 
 @settings_bp.route('/backup/restore', methods=['POST'])
@@ -305,7 +396,7 @@ def backup_restore():
     filename = request.form.get('filename', '').strip()
     if not filename:
         flash("Fichier de sauvegarde non spécifié.", 'error')
-        return redirect(url_for('settings.index'))
+        return redirect(url_for('settings.index', tab='sauvegardes'))
 
     # Create a safety backup before restoring
     backup_db('pre_restore')
@@ -316,4 +407,40 @@ def backup_restore():
     else:
         flash("Erreur lors de la restauration. Vérifiez le fichier.", 'error')
 
-    return redirect(url_for('settings.index'))
+    return redirect(url_for('settings.index', tab='sauvegardes'))
+
+
+@settings_bp.route('/distribution/save', methods=['POST'])
+def distribution_save():
+    """Save default distribution percentages."""
+    crops = get_crops()
+    categories = get_categories()
+    
+    distribution = {}
+    
+    # Process each category
+    for cat in categories:
+        cat_crops = [c for c in crops if c['category'] == cat]
+        if not cat_crops:
+            continue
+            
+        cat_dist = {}
+        # Iterate relevant crops
+        for crop in cat_crops:
+            key = f"crop_{crop['id']}"
+            val_str = request.form.get(key)
+            if val_str is not None:
+                try:
+                    val = float(val_str)
+                except ValueError:
+                    val = 0.0
+                cat_dist[crop['crop_name']] = val
+            
+        if cat_dist:
+            distribution[cat] = cat_dist
+
+    # Save as JSON string
+    update_setting('distribution_defaults', json.dumps(distribution))
+    flash("Répartition par défaut enregistrée.", 'success')
+    return redirect(url_for('settings.index', tab='distribution'))
+

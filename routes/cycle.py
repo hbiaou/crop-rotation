@@ -16,6 +16,8 @@ See FEATURES_SPEC.md sections F1, F2, F6, F8.
 import json
 import os
 import math
+import re
+import random
 from datetime import datetime
 from collections import OrderedDict
 
@@ -145,9 +147,13 @@ def _compute_auto_distribution(garden_id):
     cat_to_beds = {cat: [] for cat in categories}
     cat_filled = {cat: 0 for cat in categories}
 
+    # Randomize the starting category index for "Démarrage à Zéro"
+    start_offset = random.randint(0, num_categories - 1)
+
     for bed_idx, bed_number in enumerate(beds_grouped):
         sub_beds_list = beds_grouped[bed_number]
-        primary_cat = categories[bed_idx % num_categories]
+        # Apply offset to rotation
+        primary_cat = categories[(bed_idx + start_offset) % num_categories]
 
         for sb in sub_beds_list:
             # Use primary category if it still has room
@@ -205,6 +211,8 @@ def _compute_auto_distribution(garden_id):
                 crop_assignments[-1] = (last[0], last[1] + remaining_beds)
         else:
             # Equal distribution if no defaults
+            # Shuffle crops to randomize which one comes first in the block
+            random.shuffle(cat_crops)
             per_crop = len(cat_beds) // len(cat_crops)
             leftover = len(cat_beds) % len(cat_crops)
             for i, crop in enumerate(cat_crops):
@@ -293,7 +301,18 @@ def bootstrap_save(garden_id):
         flash("Jardin introuvable.", "error")
         return redirect(url_for('main.index'))
 
-    current_cycle = compute_current_cycle()
+    # Get cycle from form or compute default
+    cycle_input = request.form.get('cycle', '').strip().upper()
+    current_cycle = ""
+    
+    if cycle_input:
+        # Basic format validation: 4 digits + suffix
+        if not re.match(r'^\d{4}[A-Za-z0-9]+$', cycle_input):
+            flash("Format du cycle invalide. Utilisez 'YYYY' suivi d'un suffixe (ex: 2025B).", "error")
+            return redirect(url_for('cycle.bootstrap', garden_id=garden_id))
+        current_cycle = cycle_input
+    else:
+        current_cycle = compute_current_cycle()
     active_beds = get_sub_beds(garden_id, active_only=True)
 
     # Collect form data
@@ -404,7 +423,7 @@ def generate_cycle(garden_id):
 
     # Step 3: Redirect to distribution page
     return redirect(url_for('distribution.distribution_page',
-                            garden_id=garden_id, cycle=new_cycle))
+                            garden_id=garden_id, cycle=new_cycle, new=1))
 
 
 # ========================================

@@ -294,9 +294,6 @@ def assign_crops(garden_id, cycle):
             (garden_id, cycle)
         ).fetchall()
 
-        if not profiles:
-            return False, "Aucun profil de répartition trouvé pour ce cycle."
-
         # Load cycle_plans for this cycle (the beds we need to assign crops to)
         plans = conn.execute(
             """SELECT cp.id as plan_id, cp.sub_bed_id, cp.planned_category,
@@ -328,6 +325,14 @@ def assign_crops(garden_id, cycle):
             cat_beds = [p for p in plans if p['planned_category'] == category]
             if not cat_beds:
                 continue
+
+            # CRITICAL FIX: Reset all beds in this category to have NO planned_crop_id first.
+            # This ensures that that if a crop's target count is reduced to 0, it doesn't keep old assignments.
+            for bed in cat_beds:
+                conn.execute(
+                    "UPDATE cycle_plans SET planned_crop_id = NULL WHERE id = ?",
+                    (bed['plan_id'],)
+                )
 
             total_beds_in_cat = len(cat_beds)
 
@@ -374,6 +379,7 @@ def assign_crops(garden_id, cycle):
                     })
 
             # Assign crops to beds
+            
             assigned_bed_ids = set()
 
             for crop_info in crop_targets:

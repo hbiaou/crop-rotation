@@ -14,7 +14,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from database import (
     get_garden, get_crops, get_rotation_sequence,
-    get_distribution_profiles, save_distribution_profiles, get_db
+    get_distribution_profiles, save_distribution_profiles, get_db,
+    get_setting
 )
 from rotation_engine import assign_crops
 
@@ -24,10 +25,21 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _load_default_distribution(garden_code):
-    """Load default distribution percentages from defaults.json for a garden.
-
-    Returns a nested dict: {category: {crop_name: percentage}}
+    """Load default distribution percentages.
+    
+    Priority:
+    1. Database `settings` table (key: `distribution_defaults`)
+    2. defaults.json file
     """
+    # 1. Try DB
+    db_defaults_json = get_setting('distribution_defaults')
+    if db_defaults_json:
+        try:
+            return json.loads(db_defaults_json)
+        except json.JSONDecodeError:
+            pass
+
+    # 2. Try file
     defaults_path = os.path.join(BASE_DIR, 'config', 'defaults.json')
     try:
         with open(defaults_path, 'r', encoding='utf-8') as f:
@@ -89,8 +101,13 @@ def distribution_page(garden_id, cycle):
     # 1. Check current cycle profiles
     existing_profiles = get_distribution_profiles(garden_id, cycle)
 
-    # 2. If none, try previous cycle
+    # 2. If none, try defaults (DB or JSON)
+    defaults = {}
     if not existing_profiles:
+        defaults = _load_default_distribution(garden['garden_code'])
+    
+    # 3. If no defaults, try previous cycle
+    if not existing_profiles and not defaults:
         conn = get_db()
         prev_cycle_row = conn.execute(
             """SELECT DISTINCT cycle FROM cycle_plans
@@ -103,9 +120,9 @@ def distribution_page(garden_id, cycle):
         if prev_cycle_row:
             existing_profiles = get_distribution_profiles(garden_id, prev_cycle_row['cycle'])
 
-    # 3. If still none, use defaults.json
+    # 4. Build profile map
     if not existing_profiles:
-        defaults = _load_default_distribution(garden['garden_code'])
+        # Use defaults
         # defaults is a dict like {category: {crop_name: percentage}}
         # Flatten into crop_id → percentage map
         profile_map = {}

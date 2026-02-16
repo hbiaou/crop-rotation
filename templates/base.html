@@ -18,7 +18,17 @@
     <nav class="navbar">
         <div class="nav-container">
             <a href="{{ url_for('main.index') }}" class="nav-brand">
-                <span class="nav-icon">🌱</span>
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" stroke-opacity="0.2" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                        <path d="M22 12a10 10 0 0 1-10 10" />
+                        <path d="M12 22a10 10 0 0 1-10-10" />
+                        <path d="M2 12a10 10 0 0 1 10-10" />
+                        <path d="M12 8v8" />
+                        <path d="M8 12h8" />
+                    </svg></span>
                 <span class="nav-title">{{ i18n.nav.app_title }}</span>
             </a>
             <button class="nav-toggle" aria-label="Menu" id="navToggle">
@@ -35,7 +45,7 @@
                         class="nav-link {% if request.endpoint and 'settings' in request.endpoint %}active{% endif %}">
                         <span class="nav-link-icon">⚙️</span> {{ i18n.nav.settings }}
                     </a></li>
-                <li><a href="#"
+                <li><a href="{{ url_for('export.index') }}"
                         class="nav-link {% if request.endpoint and 'export' in request.endpoint %}active{% endif %}">
                         <span class="nav-link-icon">📤</span> {{ i18n.nav.export }}
                     </a></li>

@@ -51,6 +51,7 @@ class Crop:
     id: Optional[int] = None
     crop_name: str = ""
     category: str = ""
+    family: str = ""
 
 
 @dataclass

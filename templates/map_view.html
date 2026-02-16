@@ -109,6 +109,7 @@
                     {% set cat_class = 'cat-' + (display_cat|lower if display_cat else 'empty') %}
                     {% set is_diff = sb['actual_crop_name'] and sb['actual_crop_name'] != sb['planned_crop_name'] %}
                     <td class="map-cell {{ cat_class }}{% if sb['is_override'] %} map-cell-overridden{% endif %}"
+                        id="subbed-{{ bed['bed_number'] }}-{{ sb['position'] }}"
                         data-plan-id="{{ sb['cycle_plan_id'] }}" data-bed="{{ bed['bed_number'] }}"
                         data-position="{{ sb['position'] }}" data-planned-category="{{ sb['planned_category'] or '' }}"
                         data-planned-crop="{{ sb['planned_crop_name'] or '' }}"
@@ -136,7 +137,7 @@
     {# ── Reserve Beds ── #}
     {% if map_data['reserve_beds'] %}
     <div class="reserve-section">
-        <h3 class="reserve-title">🌿 Planches de réserve</h3>
+        <h3 class="reserve-title">🌿 Sous-Planches de réserve</h3>
         <div class="reserve-beds">
             {% for rb in map_data['reserve_beds'] %}
             <div class="reserve-bed-chip">
@@ -165,6 +166,8 @@
             </div>
 
             <input type="hidden" name="plan_id" id="modalPlanId">
+            <input type="hidden" name="bed_number" id="modalBedNum">
+            <input type="hidden" name="sub_bed_position" id="modalSubBedPos">
 
             <div class="form-group">
                 <label class="form-label" for="modalCategory">Catégorie réelle</label>

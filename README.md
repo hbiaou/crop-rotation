@@ -13,6 +13,8 @@ A web application for planning and managing crop rotation in market gardens. Bui
 - **📝 Override Recording** — Record field changes when actual planting differs from the plan
 - **🖨️ Print-Ready Map** — A4 landscape-optimized view for use in the field
 - **📥 Excel Export** — Download rotation data as styled `.xlsx` workbooks (per-garden or all gardens)
+- **🔙 History Import** — Import historical cycle data from JSON to restore past states
+- **🧨 Danger Zone** — Reset garden history to correct bootstrap errors
 - **⏪ Undo Generation** — Safely roll back the most recent cycle if needed
 - **✅ Finalize Cycle** — Save a JSON snapshot of actual planting data to `history/`
 - **⚙️ Settings** — Manage gardens, crops, rotation sequence, cycles per year, and database backups
@@ -47,6 +49,17 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 2. Click **"Démarrage à zéro"** to bootstrap your first garden with initial planting data
 3. Use **"Auto-distribuer"** on the bootstrap page to fill in crops automatically, or assign them manually
 4. Once bootstrapped, view your garden map, generate the next cycle, and adjust distributions
+5. Records of historical cycles (e.g. from previous years) can be entered by manually setting the cycle ID during bootstrap (see below).
+
+### Historical Data & Imbalance Correction
+
+If you have data from a previous year (e.g., 2025B) and want to start your rotation from there:
+1.  **Bootstrap**: In the bootstrap page, change the default cycle (e.g., `2026A`) to your specific past cycle (e.g., `2025B`).
+2.  **Enter Data**: Fill in what was planted during that cycle.
+3.  **Generate**: When you generate the next cycle, the system will correctly rotate from `2025B` to `2026A`.
+4.  **Correct Imbalances**: If your history had category imbalances, the system will adapt.
+5.  **JSON Import**: You can also upload a JSON file containing the full history of a cycle via **Settings > Import**. This is useful for bulk-importing past data without manual entry.
+6.  **Reset History**: If you made a mistake with the cycle ID (e.g., started with `2026A` instead of `2025B`), go to **Settings > Danger Zone** to clear the history and start over.
 
 ## Tech Stack
 

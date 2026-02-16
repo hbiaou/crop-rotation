@@ -34,7 +34,7 @@
                 {{ cat.category }}
             </h2>
             <div class="category-stats">
-                <span class="badge">{{ cat.total_beds }} planches</span>
+                <span class="badge">{{ cat.total_beds }} sous-planches</span>
                 <span class="badge validation-badge" id="validation-{{ cat.category }}">
                     <span class="resolved-total" data-category="{{ cat.category }}">0</span> / {{ cat.total_beds }}
                     {{ i18n.distribution.assigned }}
@@ -84,14 +84,26 @@
     {% endfor %}
 
     <div class="distribution-actions">
+        {% if request.args.get('new') == '1' %}
+        <button type="button" class="btn btn-danger" onclick="confirmCancel()">
+            <span class="btn-icon">🗑️</span> {{ i18n.buttons.cancel }}
+        </button>
+        {% else %}
         <a href="{{ url_for('main.index', garden_id=garden.id) }}" class="btn btn-secondary">
             <span class="btn-icon">←</span> {{ i18n.distribution.back }}
         </a>
+        {% endif %}
         <button type="submit" class="btn btn-primary btn-lg">
             <span class="btn-icon">💾</span> {{ i18n.distribution.save }}
         </button>
     </div>
 </form>
+
+<!-- Hidden form for Undo -->
+{% if request.args.get('new') == '1' %}
+<form id="undoForm" method="POST" action="{{ url_for('cycle.undo_cycle', garden_id=garden.id) }}" style="display:none;">
+</form>
+{% endif %}
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -186,5 +198,11 @@
             updateCategory(cat);
         });
     });
+
+    function confirmCancel() {
+        if (confirm("Êtes-vous sûr de vouloir annuler cette génération ? Le cycle sera supprimé.")) {
+            document.getElementById('undoForm').submit();
+        }
+    }
 </script>
 {% endblock %}

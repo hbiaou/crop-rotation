@@ -149,12 +149,12 @@
         "crop": "Culture",
         "percentage": "Pourcentage",
         "setting": "Réglage",
-        "beds": "Planches",
+        "beds": "Sous-planches",
         "assigned": "affectées"
     },
     "map": {
         "title": "Carte — {garden} — Cycle {cycle}",
-        "reserve_title": "Planches de réserve",
+        "reserve_title": "Sous-Planches de réserve",
         "legend_title": "Légende",
         "override_title": "Remplacement",
         "planned_label": "Planifié",

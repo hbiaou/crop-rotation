@@ -21,6 +21,7 @@ main_bp = Blueprint('main', __name__)
 
 
 @main_bp.route('/')
+@main_bp.route('/Accueil')
 def index():
     """Homepage — garden selector, cycle selector, action buttons, stats."""
     gardens = get_gardens()
@@ -131,7 +132,14 @@ def map_override(garden_id, cycle):
     else:
         flash("Erreur lors de l'enregistrement du remplacement.", "error")
 
-    return redirect(url_for('main.map_view', garden_id=garden_id, cycle=cycle))
+    # Construct anchor for scroll preservation
+    bed_number = request.form.get('bed_number')
+    sub_bed_position = request.form.get('sub_bed_position')
+    anchor = None
+    if bed_number and sub_bed_position:
+        anchor = f"subbed-{bed_number}-{sub_bed_position}"
+
+    return redirect(url_for('main.map_view', garden_id=garden_id, cycle=cycle, _anchor=anchor))
 
 
 

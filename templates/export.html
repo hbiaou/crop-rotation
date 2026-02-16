@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ i18n.nav.export }} — {{ i18n.nav.app_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📤 {{ i18n.nav.export }}</h1>
+    <p class="page-subtitle">Exporter les données des cycles et des jardins</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">📊 Exporter vers Excel</h2>
+    </div>
+    <div class="card-body">
+        <p class="mb-lg">
+            Téléchargez les données de planification et de récolte au format Excel (.xlsx).
+            Le fichier inclut une feuille pour le plan et une feuille pour la répartition.
+        </p>
+
+        <form method="GET" action="" id="exportForm" class="form-row align-end">
+            <div class="form-group">
+                <label class="form-label">{{ i18n.labels.garden }}</label>
+                <select id="gardenSelect" class="form-select">
+                    <option value="all">Tous les jardins (Fichier multi-onglets)</option>
+                    {% for g in gardens %}
+                    <option value="{{ g.id }}">{{ g.garden_code }} — {{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">{{ i18n.labels.cycle }}</label>
+                <select id="cycleSelect" class="form-select">
+                    {% for c in cycles %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn btn-primary" onclick="submitExport()">
+                    <span class="btn-icon">📥</span> Télécharger
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-lg text-muted text-sm">
+            <p>ℹ️ <strong>Note :</strong> Une sauvegarde automatique est créée avant chaque export.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitExport() {
+        var gardenId = document.getElementById('gardenSelect').value;
+        var cycle = document.getElementById('cycleSelect').value;
+
+        if (!cycle) {
+            alert("Veuillez sélectionner un cycle.");
+            return;
+        }
+
+        var url;
+        if (gardenId === 'all') {
+            url = "{{ url_for('export.export_excel_all', cycle='CYCLE_PLACEHOLDER') }}";
+            url = url.replace('CYCLE_PLACEHOLDER', cycle);
+        } else {
+            url = "{{ url_for('export.export_excel', garden_id='GARDEN_PLACEHOLDER', cycle='CYCLE_PLACEHOLDER') }}";
+            url = url.replace('GARDEN_PLACEHOLDER', gardenId).replace('CYCLE_PLACEHOLDER', cycle);
+        }
+
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

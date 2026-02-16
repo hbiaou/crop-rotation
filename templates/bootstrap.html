@@ -10,9 +10,25 @@
         <a href="{{ url_for('main.index') }}" class="back-link">← {{ i18n.nav.home }}</a>
         <h1 class="page-title">{{ i18n.pages.bootstrap_title }}</h1>
         <p class="page-subtitle">
-            {{ garden.garden_code }} — {{ garden.name }} · {{ i18n.bootstrap.cycle_label }}: <strong>{{ current_cycle
-                }}</strong>
+            {{ garden.garden_code }} — {{ garden.name }}
         </p>
+    </div>
+
+    <!-- Cycle Selection -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <label for="cycleInput" class="form-label">
+                <strong>{{ i18n.bootstrap.cycle_label }}</strong>
+                <span class="text-muted">({{ i18n.bootstrap.cycle_help | default('Ex: 2025B, 2026A') }})</span>
+            </label>
+            <div class="input-group" style="max_width: 300px;">
+                <input type="text" id="cycleInput" name="cycle" class="form-control" value="{{ current_cycle }}"
+                    required pattern="^[0-9]{4}[A-Z0-9]+$" title="Format: YYYY + Suffix (e.g. 2025B)">
+            </div>
+            <small class="form-text text-muted">
+                {{ i18n.bootstrap.cycle_description | default('Changez ceci pour entrer des données historiques (ex: cycle de l\'année dernière).') }}
+            </small>
+        </div>
     </div>
 
     <!-- Warning for existing data -->

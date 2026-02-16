@@ -67,7 +67,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS crops (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             crop_name TEXT UNIQUE NOT NULL,
-            category TEXT NOT NULL CHECK (category IN ('Feuille','Graine','Racine','Fruit','Couverture'))
+            category TEXT NOT NULL CHECK (category IN ('Feuille','Graine','Racine','Fruit','Couverture')),
+            family TEXT DEFAULT ''
         )
     """)
 
@@ -139,6 +140,25 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # Run migrations
+    _migrate_add_family_column()
+
+
+def _migrate_add_family_column():
+    """Add family column to crops table if it doesn't exist."""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Check if column exists
+        columns = [i[1] for i in cursor.execute("PRAGMA table_info(crops)").fetchall()]
+        if 'family' not in columns:
+            cursor.execute("ALTER TABLE crops ADD COLUMN family TEXT DEFAULT ''")
+            conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
 
 def seed_defaults():
     """Populate default data if tables are empty. Idempotent — skips if data exists."""
@@ -170,36 +190,36 @@ def seed_defaults():
     if existing == 0:
         crops = [
             # Feuille
-            ('Choux', 'Feuille'),
-            ('Laitue', 'Feuille'),
-            ('Crincrin', 'Feuille'),
-            ('Amaranthe', 'Feuille'),
+            ('Choux', 'Feuille', 'Brassicacées'),
+            ('Laitue', 'Feuille', 'Astéracées'),
+            ('Crincrin', 'Feuille', 'Malvacées'),
+            ('Amaranthe', 'Feuille', 'Amaranthacées'),
             # Graine
-            ('Maïs', 'Graine'),
-            ('Lentille', 'Graine'),
-            ('Haricot-Vert', 'Graine'),
-            ('Tournesol', 'Graine'),
-            ('Sésame', 'Graine'),
+            ('Maïs', 'Graine', 'Poacées'),
+            ('Lentille', 'Graine', 'Fabacées'),
+            ('Haricot-Vert', 'Graine', 'Fabacées'),
+            ('Tournesol', 'Graine', 'Astéracées'),
+            ('Sésame', 'Graine', 'Pédaliacées'),
             # Racine
-            ('Carotte', 'Racine'),
-            ('Oignon', 'Racine'),
-            ('Patate', 'Racine'),
-            ('Ail', 'Racine'),
+            ('Carotte', 'Racine', 'Apiacées'),
+            ('Oignon', 'Racine', 'Amaryllidacées'),
+            ('Patate', 'Racine', 'Convolvulacées'),
+            ('Ail', 'Racine', 'Amaryllidacées'),
             # Fruit
-            ('Gombo', 'Fruit'),
-            ('Piment', 'Fruit'),
-            ('Tomate', 'Fruit'),
-            ('Concombre', 'Fruit'),
-            ('Pastèque', 'Fruit'),
-            ('Fraise', 'Fruit'),
+            ('Gombo', 'Fruit', 'Malvacées'),
+            ('Piment', 'Fruit', 'Solanacées'),
+            ('Tomate', 'Fruit', 'Solanacées'),
+            ('Concombre', 'Fruit', 'Cucurbitacées'),
+            ('Pastèque', 'Fruit', 'Cucurbitacées'),
+            ('Fraise', 'Fruit', 'Rosacées'),
             # Couverture
-            ('Crotalaria', 'Couverture'),
-            ('Aeschynomene', 'Couverture'),
-            ('Tithonia', 'Couverture'),
-            ('Mucuna', 'Couverture'),
+            ('Crotalaria', 'Couverture', 'Fabacées'),
+            ('Aeschynomene', 'Couverture', 'Fabacées'),
+            ('Tithonia', 'Couverture', 'Astéracées'),
+            ('Mucuna', 'Couverture', 'Fabacées'),
         ]
         cursor.executemany(
-            "INSERT INTO crops (crop_name, category) VALUES (?, ?)",
+            "INSERT INTO crops (crop_name, category, family) VALUES (?, ?, ?)",
             crops
         )
 
@@ -490,13 +510,13 @@ def _recount_active(conn, garden_id):
 # Crop CRUD
 # ========================================
 
-def create_crop(crop_name, category):
+def create_crop(crop_name, category, family=''):
     """Create a new crop. Returns crop_id or None if name already exists."""
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO crops (crop_name, category) VALUES (?, ?)",
-            (crop_name.strip(), category)
+            "INSERT INTO crops (crop_name, category, family) VALUES (?, ?, ?)",
+            (crop_name.strip(), category, family.strip())
         )
         crop_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit()
@@ -906,5 +926,130 @@ def update_cycle_plan_override(plan_id, actual_category, actual_crop_id, notes):
     except Exception:
         conn.rollback()
         return False
+    finally:
+        conn.close()
+
+
+def reset_garden_history(garden_id):
+    """Delete ALL history (plans, distributions) for a garden, effectively resetting it."""
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM cycle_plans WHERE garden_id = ?", (garden_id,))
+        conn.execute("DELETE FROM distribution_profiles WHERE garden_id = ?", (garden_id,))
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def import_garden_cycle_data(json_data):
+    """Import cycle data from JSON.
+    
+    Expected JSON structure:
+    {
+      "garden_code": "G1",
+      "cycle": "2025B",
+      "beds": [
+        { "bed": 1, "sub_bed": 1, "category": "Racine", "crop": "Carotte", ... },
+        ...
+      ]
+    }
+    """
+    conn = get_db()
+    try:
+        # 1. Validate Garden
+        garden_code = json_data.get('garden_code')
+        if not garden_code:
+            return False, "Code jardin manquant."
+            
+        row = conn.execute("SELECT id, name FROM gardens WHERE garden_code = ?", (garden_code,)).fetchone()
+        if not row:
+            return False, f"Jardin '{garden_code}' introuvable."
+        garden_id = row['id']
+        
+        # 2. Validate Cycle
+        cycle = json_data.get('cycle')
+        if not cycle:
+             return False, "Cycle manquant."
+        
+        # Check if data already exists
+        count = conn.execute("SELECT COUNT(*) FROM cycle_plans WHERE garden_id = ? AND cycle = ?", (garden_id, cycle)).fetchone()[0]
+        if count > 0:
+            return False, f"Des données existent déjà pour le cycle {cycle}. Veuillez réinitialiser l'historique d'abord."
+
+        # 3. Process Beds
+        beds = json_data.get('beds', [])
+        if not beds:
+            return False, "Aucune donnée de planche (beds) trouvée."
+            
+        stats = {} # crop_name -> count
+        total_items = 0
+
+        for item in beds:
+            bed_num = item.get('bed')
+            sub_bed_pos = item.get('sub_bed')
+            category = item.get('category')
+            crop_name = item.get('crop')
+            is_override = item.get('was_override', False)
+            notes = item.get('notes')
+            
+            # Find sub-bed ID
+            sb_row = conn.execute(
+                "SELECT id FROM sub_beds WHERE garden_id = ? AND bed_number = ? AND sub_bed_position = ?",
+                (garden_id, bed_num, sub_bed_pos)
+            ).fetchone()
+            
+            if not sb_row:
+                continue
+            sub_bed_id = sb_row['id']
+            
+            # Find or Create Crop
+            crop_id = None
+            if crop_name:
+                c_row = conn.execute("SELECT id FROM crops WHERE crop_name = ?", (crop_name,)).fetchone()
+                if c_row:
+                    crop_id = c_row['id']
+                else:
+                    if category:
+                        cur = conn.execute("INSERT INTO crops (crop_name, category) VALUES (?, ?)", (crop_name, category))
+                        crop_id = cur.lastrowid
+                    else:
+                        return False, f"Culture '{crop_name}' inconnue et sans catégorie."
+            
+            if crop_id:
+                stats[crop_id] = stats.get(crop_id, 0) + 1
+            
+            total_items += 1
+
+            # Insert Plan
+            col_plan_cat = category
+            col_plan_crop = crop_id
+            col_act_cat = category
+            col_act_crop = crop_id
+            
+            conn.execute("""
+                INSERT INTO cycle_plans 
+                (sub_bed_id, garden_id, cycle, planned_category, planned_crop_id, actual_category, actual_crop_id, is_override, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (sub_bed_id, garden_id, cycle, col_plan_cat, col_plan_crop, col_act_cat, col_act_crop, is_override, notes))
+
+        # 4. Generate Distribution Profiles
+        if total_items > 0:
+            for c_id, count in stats.items():
+                percentage = (count / total_items) * 100
+                conn.execute(
+                    "INSERT INTO distribution_profiles (garden_id, cycle, crop_id, target_percentage) VALUES (?, ?, ?, ?)",
+                    (garden_id, cycle, c_id, percentage)
+                )
+
+        conn.commit()
+        return True, f"Importation réussie pour {cycle} ({total_items} entrées)."
+
+    except Exception as e:
+        conn.rollback()
+        return False, f"Erreur SQL: {str(e)}"
     finally:
         conn.close()

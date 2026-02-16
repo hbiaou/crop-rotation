@@ -257,6 +257,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (mapTable) {
         var modal = document.getElementById('overrideModal');
         var modalPlanId = document.getElementById('modalPlanId');
+        var modalBedNum = document.getElementById('modalBedNum');
+        var modalSubBedPos = document.getElementById('modalSubBedPos');
         var modalBedInfo = document.getElementById('modalBedInfo');
         var modalPlanned = document.getElementById('modalPlanned');
         var modalCategory = document.getElementById('modalCategory');
@@ -280,6 +282,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Populate modal
             modalPlanId.value = planId;
+            if (modalBedNum) modalBedNum.value = bed;
+            if (modalSubBedPos) modalSubBedPos.value = pos;
             modalBedInfo.textContent = 'P' + bed + '-S' + pos;
             modalPlanned.value = plannedCrop || plannedCat || '—';
             modalNotes.value = notes || '';
