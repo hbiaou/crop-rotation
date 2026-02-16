@@ -28,6 +28,7 @@ def create_app(test_config=None):
     app = Flask(__name__)
     app.secret_key = 'crop-rotation-local-app-secret-key'
     app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
 
     if test_config:
         app.config.update(test_config)

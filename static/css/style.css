@@ -1032,11 +1032,11 @@ tbody tr:hover {
 
 .tabs-nav {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-xs);
     border-bottom: 2px solid var(--color-border);
     padding-bottom: 0;
     margin-bottom: var(--spacing-lg);
-    overflow-x: auto;
 }
 
 .tab-btn {
@@ -1047,13 +1047,17 @@ tbody tr:hover {
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
-    color: var(--color-muted);
+    color: var(--color-text-secondary);
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 500;
     transition: var(--transition-base);
     white-space: nowrap;
     margin-bottom: -2px;
+}
+
+.tab-btn .tab-label {
+    display: inline;
 }
 
 .tab-btn:hover {
@@ -1449,15 +1453,28 @@ tbody tr:hover {
     font-size: 0.8rem;
 }
 
-/* Responsive: Settings */
-@media (max-width: 768px) {
-    .tabs-nav {
-        gap: 2px;
+/* Responsive: Settings - icon-only on smaller screens */
+@media (max-width: 900px) {
+    .tab-btn .tab-label {
+        display: none;
     }
 
     .tab-btn {
+        padding: var(--spacing-sm);
+    }
+
+    .tab-icon {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .tab-btn {
         padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: 0.85rem;
+    }
+
+    .tab-icon {
+        font-size: 1.1rem;
     }
 
     .tab-icon {
