@@ -8,13 +8,16 @@ A web application for planning and managing crop rotation in market gardens. Bui
 
 - **🚀 Bootstrap** — Initial setup wizard to assign categories and crops to every sub-bed in a garden
 - **⚡ Cycle Generation** — Automatic rotation based on a configurable 5-category sequence (Feuille → Graine → Racine → Fruit → Couverture)
+- **🌿 Crop Families** — Group crops by botanical family (e.g., Solanacées, Fabacées) for better rotation planning
+- **🎲 Smart Randomization** — Randomized starting point for new gardens to ensure diverse initial layouts
 - **📊 Distribution Adjustment** — Fine-tune crop percentages per category with live preview of bed counts
 - **🗺️ Map Visualization** — Color-coded garden map showing planned and actual crops, with override indicators
+- **📍 Scroll Preservation** — Map view remembers your scroll position after editing sub-beds
 - **📝 Override Recording** — Record field changes when actual planting differs from the plan
 - **🖨️ Print-Ready Map** — A4 landscape-optimized view for use in the field
 - **📥 Excel Export** — Download rotation data as styled `.xlsx` workbooks (per-garden or all gardens)
 - **🔙 History Import** — Import historical cycle data from JSON to restore past states
-- **🧨 Danger Zone** — Reset garden history to correct bootstrap errors
+- **🧨 Danger Zone** — Delete specific cycles or reset garden history entirely
 - **⏪ Undo Generation** — Safely roll back the most recent cycle if needed
 - **✅ Finalize Cycle** — Save a JSON snapshot of actual planting data to `history/`
 - **⚙️ Settings** — Manage gardens, crops, rotation sequence, cycles per year, and database backups
