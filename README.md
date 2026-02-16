@@ -33,7 +33,7 @@ A separate, canonical database for managing plant information:
 - **Common Names** — Multiple common names per plant in different languages (French, English, local dialects)
 - **Preferred Names** — Mark one common name per language as the preferred UI display name
 - **Synonyms** — Track alternative scientific names for easier searching
-- **Smart Search** — Search across scientific names, common names, and synonyms with ranked results
+- **Smart Search** — Search across scientific names, common names, synonyms, family, and category with ranked results
 - **Duplicate Detection** — Prevents duplicate entries using normalized name comparison
 - **Auto-fill Crops** — When adding crops, type to search the plant database and auto-fill family and category
 - **JSON Import/Export** — Download your plant database as JSON, or import from external sources (merge or replace modes)

@@ -934,7 +934,14 @@ def delete_synonym(synonym_id: int) -> Tuple[bool, Optional[str]]:
 
 def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
     """
-    Search for plants by name across scientific names, common names, and synonyms.
+    Search for plants across multiple fields.
+
+    Search fields (in priority order):
+    - Scientific names
+    - Common names
+    - Synonyms
+    - Family
+    - Default category
 
     Ranking:
     1) Exact match (normalized)
@@ -962,17 +969,22 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
         results = []
         seen_plants = set()
 
+        # Helper to add results without duplicates
+        def add_results(rows, ranking):
+            for row in rows:
+                if row['id'] not in seen_plants:
+                    results.append(_build_search_result(cursor, row, ranking))
+                    seen_plants.add(row['id'])
+
+        # ============ EXACT MATCHES ============
+
         # 1. Exact matches on scientific name
         exact_sci = cursor.execute("""
             SELECT p.*, 'scientific_name' as match_type, p.scientific_name as matched_name
             FROM plants p
             WHERE p.scientific_name_norm = ?
         """, (query_norm,)).fetchall()
-
-        for row in exact_sci:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'exact'))
-                seen_plants.add(row['id'])
+        add_results(exact_sci, 'exact')
 
         # 2. Exact matches on common names
         exact_cn = cursor.execute("""
@@ -981,11 +993,7 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             JOIN plant_common_names cn ON p.id = cn.plant_id
             WHERE cn.common_name_norm = ?
         """, (query_norm,)).fetchall()
-
-        for row in exact_cn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'exact'))
-                seen_plants.add(row['id'])
+        add_results(exact_cn, 'exact')
 
         # 3. Exact matches on synonyms
         exact_syn = cursor.execute("""
@@ -994,29 +1002,39 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             JOIN plant_synonyms s ON p.id = s.plant_id
             WHERE s.synonym_norm = ?
         """, (query_norm,)).fetchall()
+        add_results(exact_syn, 'exact')
 
-        for row in exact_syn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'exact'))
-                seen_plants.add(row['id'])
+        # 4. Exact matches on family (case-insensitive)
+        exact_fam = cursor.execute("""
+            SELECT p.*, 'family' as match_type, p.family as matched_name
+            FROM plants p
+            WHERE LOWER(p.family) = LOWER(?)
+        """, (query.strip(),)).fetchall()
+        add_results(exact_fam, 'exact')
+
+        # 5. Exact matches on default_category (case-insensitive)
+        exact_cat = cursor.execute("""
+            SELECT p.*, 'category' as match_type, p.default_category as matched_name
+            FROM plants p
+            WHERE LOWER(p.default_category) = LOWER(?)
+        """, (query.strip(),)).fetchall()
+        add_results(exact_cat, 'exact')
 
         if len(results) >= limit:
             return results[:limit]
 
-        # 4. Prefix matches on scientific name
+        # ============ PREFIX MATCHES ============
+
+        # 6. Prefix matches on scientific name
         prefix_sci = cursor.execute("""
             SELECT p.*, 'scientific_name' as match_type, p.scientific_name as matched_name
             FROM plants p
             WHERE p.scientific_name_norm LIKE ? || '%'
             AND p.scientific_name_norm != ?
         """, (query_norm, query_norm)).fetchall()
+        add_results(prefix_sci, 'prefix')
 
-        for row in prefix_sci:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'prefix'))
-                seen_plants.add(row['id'])
-
-        # 5. Prefix matches on common names
+        # 7. Prefix matches on common names
         prefix_cn = cursor.execute("""
             SELECT p.*, 'common_name' as match_type, cn.common_name as matched_name
             FROM plants p
@@ -1024,13 +1042,9 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             WHERE cn.common_name_norm LIKE ? || '%'
             AND cn.common_name_norm != ?
         """, (query_norm, query_norm)).fetchall()
+        add_results(prefix_cn, 'prefix')
 
-        for row in prefix_cn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'prefix'))
-                seen_plants.add(row['id'])
-
-        # 6. Prefix matches on synonyms
+        # 8. Prefix matches on synonyms
         prefix_syn = cursor.execute("""
             SELECT p.*, 'synonym' as match_type, s.synonym as matched_name
             FROM plants p
@@ -1038,29 +1052,41 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             WHERE s.synonym_norm LIKE ? || '%'
             AND s.synonym_norm != ?
         """, (query_norm, query_norm)).fetchall()
+        add_results(prefix_syn, 'prefix')
 
-        for row in prefix_syn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'prefix'))
-                seen_plants.add(row['id'])
+        # 9. Prefix matches on family
+        prefix_fam = cursor.execute("""
+            SELECT p.*, 'family' as match_type, p.family as matched_name
+            FROM plants p
+            WHERE LOWER(p.family) LIKE LOWER(?) || '%'
+            AND LOWER(p.family) != LOWER(?)
+        """, (query.strip(), query.strip())).fetchall()
+        add_results(prefix_fam, 'prefix')
+
+        # 10. Prefix matches on default_category
+        prefix_cat = cursor.execute("""
+            SELECT p.*, 'category' as match_type, p.default_category as matched_name
+            FROM plants p
+            WHERE LOWER(p.default_category) LIKE LOWER(?) || '%'
+            AND LOWER(p.default_category) != LOWER(?)
+        """, (query.strip(), query.strip())).fetchall()
+        add_results(prefix_cat, 'prefix')
 
         if len(results) >= limit:
             return results[:limit]
 
-        # 7. Substring matches on scientific name
+        # ============ SUBSTRING MATCHES ============
+
+        # 11. Substring matches on scientific name
         substr_sci = cursor.execute("""
             SELECT p.*, 'scientific_name' as match_type, p.scientific_name as matched_name
             FROM plants p
             WHERE p.scientific_name_norm LIKE '%' || ? || '%'
             AND p.scientific_name_norm NOT LIKE ? || '%'
         """, (query_norm, query_norm)).fetchall()
+        add_results(substr_sci, 'substring')
 
-        for row in substr_sci:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'substring'))
-                seen_plants.add(row['id'])
-
-        # 8. Substring matches on common names
+        # 12. Substring matches on common names
         substr_cn = cursor.execute("""
             SELECT p.*, 'common_name' as match_type, cn.common_name as matched_name
             FROM plants p
@@ -1068,13 +1094,9 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             WHERE cn.common_name_norm LIKE '%' || ? || '%'
             AND cn.common_name_norm NOT LIKE ? || '%'
         """, (query_norm, query_norm)).fetchall()
+        add_results(substr_cn, 'substring')
 
-        for row in substr_cn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'substring'))
-                seen_plants.add(row['id'])
-
-        # 9. Substring matches on synonyms
+        # 13. Substring matches on synonyms
         substr_syn = cursor.execute("""
             SELECT p.*, 'synonym' as match_type, s.synonym as matched_name
             FROM plants p
@@ -1082,11 +1104,25 @@ def search_plants(query: str, limit: int = 20) -> List[Dict[str, Any]]:
             WHERE s.synonym_norm LIKE '%' || ? || '%'
             AND s.synonym_norm NOT LIKE ? || '%'
         """, (query_norm, query_norm)).fetchall()
+        add_results(substr_syn, 'substring')
 
-        for row in substr_syn:
-            if row['id'] not in seen_plants:
-                results.append(_build_search_result(cursor, row, 'substring'))
-                seen_plants.add(row['id'])
+        # 14. Substring matches on family
+        substr_fam = cursor.execute("""
+            SELECT p.*, 'family' as match_type, p.family as matched_name
+            FROM plants p
+            WHERE LOWER(p.family) LIKE '%' || LOWER(?) || '%'
+            AND LOWER(p.family) NOT LIKE LOWER(?) || '%'
+        """, (query.strip(), query.strip())).fetchall()
+        add_results(substr_fam, 'substring')
+
+        # 15. Substring matches on default_category
+        substr_cat = cursor.execute("""
+            SELECT p.*, 'category' as match_type, p.default_category as matched_name
+            FROM plants p
+            WHERE LOWER(p.default_category) LIKE '%' || LOWER(?) || '%'
+            AND LOWER(p.default_category) NOT LIKE LOWER(?) || '%'
+        """, (query.strip(), query.strip())).fetchall()
+        add_results(substr_cat, 'substring')
 
         return results[:limit]
 
@@ -1295,6 +1331,14 @@ def import_plants_json(
             common_names = plant_data.get('common_names', [])
             synonyms = plant_data.get('synonyms', [])
 
+            # New fields for infraspecific taxa support
+            base_species = plant_data.get('base_species', '').strip()
+            infraspecific_detail = plant_data.get('infraspecific_detail', '').strip()
+            # Default base_species to scientific_name if not provided
+            if not base_species:
+                base_species = scientific_name
+            base_species_norm = normalize_name(base_species)
+
             # Check if plant exists
             existing = cursor.execute(
                 "SELECT id FROM plants WHERE scientific_name_norm = ?",
@@ -1310,9 +1354,13 @@ def import_plants_json(
                         UPDATE plants
                         SET family = COALESCE(NULLIF(?, ''), family),
                             default_category = COALESCE(NULLIF(?, ''), default_category),
+                            base_species = COALESCE(NULLIF(?, ''), base_species),
+                            base_species_norm = COALESCE(NULLIF(?, ''), base_species_norm),
+                            infraspecific_detail = COALESCE(NULLIF(?, ''), infraspecific_detail),
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
-                    """, (family, default_category, plant_id))
+                    """, (family, default_category, base_species, base_species_norm,
+                          infraspecific_detail, plant_id))
                     stats['updated'] += 1
                 else:
                     stats['skipped'] += 1
@@ -1320,32 +1368,45 @@ def import_plants_json(
             else:
                 # Insert new plant
                 cursor.execute("""
-                    INSERT INTO plants (scientific_name, scientific_name_norm, family, default_category)
-                    VALUES (?, ?, ?, ?)
-                """, (scientific_name, scientific_name_norm, family, default_category))
+                    INSERT INTO plants (scientific_name, scientific_name_norm, family, default_category,
+                                       base_species, base_species_norm, infraspecific_detail)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (scientific_name, scientific_name_norm, family, default_category,
+                      base_species, base_species_norm, infraspecific_detail))
                 plant_id = cursor.lastrowid
                 stats['added'] += 1
 
             # Process common names
             if isinstance(common_names, list):
+                # Track preferred names by language to set first one as preferred if none specified
+                preferred_set_by_lang = set()
+
                 for cn in common_names:
                     if isinstance(cn, dict):
                         name = cn.get('name', '').strip()
                         lang = cn.get('lang', 'fr')
+                        is_preferred = cn.get('is_preferred', False)
                     elif isinstance(cn, str):
                         name = cn.strip()
                         lang = 'fr'
+                        is_preferred = False
                     else:
                         continue
 
                     if name:
                         name_norm = normalize_name(name)
+                        # Auto-set first name in each language as preferred if not explicitly set
+                        if not is_preferred and lang not in preferred_set_by_lang:
+                            is_preferred = True
+                        if is_preferred:
+                            preferred_set_by_lang.add(lang)
+
                         try:
                             cursor.execute("""
                                 INSERT OR IGNORE INTO plant_common_names
-                                (plant_id, common_name, common_name_norm, lang)
-                                VALUES (?, ?, ?, ?)
-                            """, (plant_id, name, name_norm, lang))
+                                (plant_id, common_name, common_name_norm, lang, is_preferred)
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (plant_id, name, name_norm, lang, 1 if is_preferred else 0))
                         except sqlite3.IntegrityError:
                             pass
 

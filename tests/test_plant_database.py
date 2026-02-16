@@ -332,6 +332,61 @@ class TestSearch:
         results = search_plants("xyz123nonexistent")
         assert len(results) == 0
 
+    def test_search_by_family(self, temp_plant_db):
+        """Test search by botanical family."""
+        create_plant("Solanum lycopersicum", family="Solanaceae")
+        create_plant("Capsicum annuum", family="Solanaceae")
+        create_plant("Lactuca sativa", family="Asteraceae")
+
+        results = search_plants("Solanaceae")
+        assert len(results) == 2
+        assert all(r['match_type'] == 'family' for r in results)
+        assert all(r['family'] == 'Solanaceae' for r in results)
+
+    def test_search_by_family_prefix(self, temp_plant_db):
+        """Test prefix search on family name."""
+        create_plant("Brassica oleracea", family="Brassicaceae")
+
+        results = search_plants("Brassic")
+        assert len(results) >= 1
+        # Should match either scientific name or family
+        assert any(r['family'] == 'Brassicaceae' for r in results)
+
+    def test_search_by_category(self, temp_plant_db):
+        """Test search by default category."""
+        create_plant("Solanum lycopersicum", default_category="Fruit")
+        create_plant("Capsicum annuum", default_category="Fruit")
+        create_plant("Lactuca sativa", default_category="Feuille")
+
+        results = search_plants("Fruit")
+        assert len(results) == 2
+        assert all(r['match_type'] == 'category' for r in results)
+        assert all(r['default_category'] == 'Fruit' for r in results)
+
+    def test_search_by_category_prefix(self, temp_plant_db):
+        """Test prefix search on category name."""
+        create_plant("Daucus carota", default_category="Racine")
+
+        results = search_plants("Rac")
+        assert len(results) >= 1
+        assert any(r['default_category'] == 'Racine' for r in results)
+
+    def test_search_by_category_case_insensitive(self, temp_plant_db):
+        """Test that category search is case-insensitive."""
+        create_plant("Zea mays", default_category="Graine")
+
+        results = search_plants("graine")
+        assert len(results) >= 1
+        assert results[0]['default_category'] == 'Graine'
+
+    def test_search_family_substring(self, temp_plant_db):
+        """Test substring search on family."""
+        create_plant("Allium cepa", family="Amaryllidaceae")
+
+        results = search_plants("llidac")
+        assert len(results) >= 1
+        assert results[0]['family'] == 'Amaryllidaceae'
+
 
 # ========================================
 # Duplicate Detection Tests
