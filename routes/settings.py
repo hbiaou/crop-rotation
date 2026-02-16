@@ -159,6 +159,7 @@ def garden_reset():
         flash("Jardin non spécifié.", 'error')
         return redirect(url_for('settings.index', tab='danger'))
 
+    garden = get_garden(garden_id)
     if not garden:
         flash("Jardin introuvable.", 'error')
         return redirect(url_for('settings.index', tab='danger'))
@@ -283,6 +284,8 @@ def crop_add():
     if not crop_name or not category:
         flash("Veuillez remplir le nom et la catégorie.", 'error')
         return redirect(url_for('settings.index', tab='cultures'))
+
+    family = request.form.get('family', '').strip()
 
     result = create_crop(crop_name, category, family)
     if result:

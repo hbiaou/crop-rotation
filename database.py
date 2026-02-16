@@ -154,8 +154,10 @@ def _migrate_add_family_column():
         if 'family' not in columns:
             cursor.execute("ALTER TABLE crops ADD COLUMN family TEXT DEFAULT ''")
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: Migration _migrate_add_family_column failed: {e}")
+        # We generally don't want to crash the whole app for a migration failure if possible,
+        # but masking it consistently is bad. Printing it ensures visibility.
     finally:
         conn.close()
 
