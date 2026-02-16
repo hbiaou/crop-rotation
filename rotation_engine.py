@@ -22,6 +22,7 @@ from database import (
     get_db, get_setting
 )
 from utils.backup import backup_db
+from plant_database import get_plant_db
 
 
 # Penalty table: cycles ago → penalty (same exact crop)
@@ -330,25 +331,49 @@ def assign_crops(garden_id, cycle):
             past_cycles = all_cycle_list[:LOOKBACK_CYCLES]
 
         # Load crop family and species information for rotation penalties
-        # Join crops with plants table to get family and base_species
-        crop_taxonomy = conn.execute("""
-            SELECT c.id as crop_id, c.family as crop_family,
-                   p.family as plant_family, p.base_species_norm
-            FROM crops c
-            LEFT JOIN plants p ON c.plant_id = p.id
+        # Note: crops table is in main DB, plants table is in separate plant_database.db
+        # We must query them separately and merge in Python
+
+        # Step 1: Get crops with their plant_id and crop-level family
+        crops_data = conn.execute("""
+            SELECT id as crop_id, family as crop_family, plant_id
+            FROM crops
         """).fetchall()
 
-        # Build lookup dictionaries for family and species
+        # Step 2: Get plant data from the plant database (separate DB)
+        plant_data = {}
+        try:
+            plant_conn = get_plant_db()
+            plants = plant_conn.execute("""
+                SELECT id, family, base_species_norm
+                FROM plants
+            """).fetchall()
+            for p in plants:
+                plant_data[p['id']] = {
+                    'family': p['family'],
+                    'base_species_norm': p['base_species_norm']
+                }
+            plant_conn.close()
+        except Exception:
+            # If plant database is unavailable, continue without plant-level data
+            pass
+
+        # Step 3: Build lookup dictionaries by merging crop and plant data
         crop_to_family = {}
         crop_to_species = {}
         crops_by_family = defaultdict(set)
         crops_by_species = defaultdict(set)
 
-        for row in crop_taxonomy:
+        for row in crops_data:
             crop_id = row['crop_id']
+            plant_id = row['plant_id']
+
+            # Get plant-level data if available
+            plant_info = plant_data.get(plant_id, {}) if plant_id else {}
+
             # Prefer plant family over crop family if available
-            family = row['plant_family'] or row['crop_family'] or ''
-            species = row['base_species_norm'] or ''
+            family = plant_info.get('family') or row['crop_family'] or ''
+            species = plant_info.get('base_species_norm') or ''
 
             crop_to_family[crop_id] = family
             crop_to_species[crop_id] = species
