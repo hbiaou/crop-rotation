@@ -460,7 +460,8 @@ def get_all_plants() -> List[Dict[str, Any]]:
                 (SELECT COUNT(*) FROM plant_common_names WHERE plant_id = p.id) as common_names_count,
                 (SELECT COUNT(*) FROM plant_synonyms WHERE plant_id = p.id) as synonyms_count,
                 (SELECT GROUP_CONCAT(common_name, ' ') FROM plant_common_names WHERE plant_id = p.id) as common_names_text,
-                (SELECT GROUP_CONCAT(synonym, ' ') FROM plant_synonyms WHERE plant_id = p.id) as synonyms_text
+                (SELECT GROUP_CONCAT(synonym, ' ') FROM plant_synonyms WHERE plant_id = p.id) as synonyms_text,
+                (SELECT common_name FROM plant_common_names WHERE plant_id = p.id AND lang = 'fr' AND is_preferred = 1 LIMIT 1) as preferred_name
             FROM plants p
             ORDER BY p.scientific_name
         """).fetchall()
@@ -474,7 +475,8 @@ def get_all_plants() -> List[Dict[str, Any]]:
                 plant_dict.get('family', ''),
                 plant_dict.get('default_category', ''),
                 plant_dict.get('common_names_text', '') or '',
-                plant_dict.get('synonyms_text', '') or ''
+                plant_dict.get('synonyms_text', '') or '',
+                plant_dict.get('preferred_name', '') or ''
             ]
             plant_dict['search_text'] = ' '.join(search_parts).lower()
             result.append(plant_dict)

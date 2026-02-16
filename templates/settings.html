@@ -692,11 +692,17 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-row form-row-2 mt-md">
+                <div class="form-row form-row-3 mt-md">
                     <div class="form-group">
-                        <label class="form-label">Noms communs (séparés par des virgules)</label>
+                        <label class="form-label">Nom préféré (affiché par défaut)</label>
+                        <input type="text" name="preferred_name" class="form-input"
+                            placeholder="Ex: Tomate">
+                        <span class="form-hint">Le premier nom dans la liste des noms communs</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Autres noms communs (séparés par des virgules)</label>
                         <input type="text" name="common_names" class="form-input"
-                            placeholder="Ex: Tomate, Pomme d'amour">
+                            placeholder="Ex: Pomme d'amour, Pomme d'or">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Synonymes (séparés par des virgules)</label>
@@ -729,6 +735,7 @@
                     <thead>
                         <tr>
                             <th>Nom scientifique</th>
+                            <th>Nom préféré</th>
                             <th>Famille</th>
                             <th>Catégorie</th>
                             <th>Noms communs</th>
@@ -742,6 +749,7 @@
                             <td>
                                 <strong>{{ plant.scientific_name }}</strong>
                             </td>
+                            <td>{{ plant.preferred_name or '—' }}</td>
                             <td>{{ plant.family or '—' }}</td>
                             <td>
                                 {% if plant.default_category %}
@@ -1104,13 +1112,16 @@
         var commonNamesHtml = '';
         if (plant.common_names && plant.common_names.length > 0) {
             plant.common_names.forEach(function(cn) {
-                commonNamesHtml += '<div class="d-flex gap-sm align-center mb-sm" data-cn-id="' + cn.id + '">' +
+                var isPreferred = cn.is_preferred ? ' checked' : '';
+                var preferredClass = cn.is_preferred ? ' preferred-name' : '';
+                commonNamesHtml += '<div class="d-flex gap-sm align-center mb-sm' + preferredClass + '" data-cn-id="' + cn.id + '">' +
                     '<input type="text" class="form-input form-input-sm" value="' + cn.name + '" style="flex:1">' +
                     '<select class="form-select form-select-sm" style="width:80px">' +
                     '<option value="fr"' + (cn.lang === 'fr' ? ' selected' : '') + '>FR</option>' +
                     '<option value="en"' + (cn.lang === 'en' ? ' selected' : '') + '>EN</option>' +
                     '<option value="local"' + (cn.lang === 'local' ? ' selected' : '') + '>Local</option>' +
                     '</select>' +
+                    '<button type="button" class="btn btn-sm ' + (cn.is_preferred ? 'btn-accent' : 'btn-secondary') + '" onclick="setPreferredName(' + cn.id + ', ' + plant.id + ')" title="Définir comme nom préféré">⭐</button>' +
                     '<button type="button" class="btn btn-sm btn-danger" onclick="deleteCommonName(' + cn.id + ', this)">🗑️</button>' +
                     '</div>';
             });
@@ -1248,6 +1259,29 @@
         .then(function(data) {
             if (data.success) {
                 btn.closest('[data-cn-id]').remove();
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    function setPreferredName(cnId, plantId) {
+        var formData = new FormData();
+        formData.append('common_name_id', cnId);
+
+        fetch('{{ url_for("plant_db.set_preferred") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                // Reload the modal to show updated preferred name
+                editPlant(plantId);
             } else {
                 alert('Erreur: ' + (data.error || 'Inconnue'));
             }

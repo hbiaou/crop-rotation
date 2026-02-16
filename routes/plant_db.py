@@ -42,7 +42,8 @@ from plant_database import (
     export_plants_json,
     import_plants_json,
     get_plant_suggestions,
-    get_plant_count
+    get_plant_count,
+    set_preferred_name
 )
 
 plant_db_bp = Blueprint('plant_db', __name__, url_prefix='/plants')
@@ -155,12 +156,23 @@ def add_plant():
         family = request.form.get('family', '').strip()
         default_category = request.form.get('default_category', '').strip()
 
+        # Parse preferred name (first, marked as preferred)
+        preferred_name = request.form.get('preferred_name', '').strip()
+
         # Parse common names from form (comma-separated or multiple fields)
         common_names_raw = request.form.get('common_names', '')
+        common_names = []
+
+        # Add preferred name first if provided
+        if preferred_name:
+            common_names.append({'name': preferred_name, 'lang': 'fr', 'is_preferred': True})
+
+        # Add other common names (not preferred)
         if common_names_raw:
-            common_names = [{'name': n.strip(), 'lang': 'fr'} for n in common_names_raw.split(',') if n.strip()]
-        else:
-            common_names = []
+            for n in common_names_raw.split(','):
+                name = n.strip()
+                if name and name != preferred_name:
+                    common_names.append({'name': name, 'lang': 'fr', 'is_preferred': False})
 
         # Parse synonyms from form
         synonyms_raw = request.form.get('synonyms', '')
@@ -362,6 +374,36 @@ def remove_cn():
         flash("Nom commun supprimé.", 'success')
     else:
         flash(error or "Erreur lors de la suppression.", 'error')
+
+    return redirect(url_for('settings.index', tab='plantes'))
+
+
+@plant_db_bp.route('/common-name/set-preferred', methods=['POST'])
+def set_preferred():
+    """Set a common name as the preferred name."""
+    if request.is_json:
+        data = request.get_json()
+        common_name_id = data.get('common_name_id')
+    else:
+        common_name_id = request.form.get('common_name_id', type=int)
+
+    if not common_name_id:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'ID requis'}), 400
+        flash("ID requis.", 'error')
+        return redirect(url_for('settings.index', tab='plantes'))
+
+    success, error = set_preferred_name(common_name_id)
+
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if success:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': error}), 400
+
+    if success:
+        flash("Nom préféré mis à jour.", 'success')
+    else:
+        flash(error or "Erreur lors de la mise à jour.", 'error')
 
     return redirect(url_for('settings.index', tab='plantes'))
 
