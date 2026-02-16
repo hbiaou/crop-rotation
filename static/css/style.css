@@ -1477,10 +1477,6 @@ tbody tr:hover {
         font-size: 1.1rem;
     }
 
-    .tab-icon {
-        display: none;
-    }
-
     .form-row-3,
     .form-row-4 {
         grid-template-columns: 1fr;
