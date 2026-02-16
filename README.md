@@ -23,6 +23,19 @@ A web application for planning and managing crop rotation in market gardens. Bui
 - **⚙️ Settings** — Manage gardens, crops, rotation sequence, cycles per year, and database backups
 - **💾 Auto-Backups** — Database is backed up automatically before cycle generation and exports
 
+### 🌱 Plant Database (New in v1.1.0)
+
+A separate, canonical database for managing plant information:
+
+- **Scientific Names** — Store plants with their proper scientific names (e.g., *Solanum lycopersicum*)
+- **Common Names** — Multiple common names per plant in different languages (French, English, local dialects)
+- **Synonyms** — Track alternative scientific names for easier searching
+- **Smart Search** — Search across scientific names, common names, and synonyms with ranked results
+- **Duplicate Detection** — Prevents duplicate entries using normalized name comparison
+- **Auto-fill Crops** — When adding crops, type to search the plant database and auto-fill family and category
+- **JSON Import/Export** — Download your plant database as JSON, or import from external sources (merge or replace modes)
+- **Separate Storage** — Plant data stored in its own SQLite database (`plant_database.db`), keeping it independent from rotation data
+
 ## Quick Start
 
 ### Prerequisites
@@ -81,6 +94,7 @@ If you have data from a previous year (e.g., 2025B) and want to start your rotat
 crop-rotation/
 ├── app.py                  # Flask entry point
 ├── database.py             # SQLite schema, seed data, CRUD operations
+├── plant_database.py       # Separate plant database module
 ├── rotation_engine.py      # Core rotation algorithm & crop assignment
 ├── requirements.txt
 ├── config/
@@ -92,7 +106,8 @@ crop-rotation/
 │   ├── cycle.py            # Bootstrap, generate, undo, finalize
 │   ├── distribution.py     # Distribution adjustment
 │   ├── settings.py         # Settings CRUD
-│   └── export.py           # Excel export
+│   ├── export.py           # Excel export
+│   └── plant_db.py         # Plant database API routes
 ├── utils/
 │   ├── backup.py           # Database backup & restore
 │   ├── export.py           # Excel generation
@@ -104,7 +119,9 @@ crop-rotation/
 │   │   └── print.css       # Print-optimized styles
 │   └── js/
 │       └── app.js          # Client-side interactions
-├── data/                   # SQLite database (auto-created)
+├── data/
+│   ├── crop_rotation.db    # Main rotation database (auto-created)
+│   └── plant_database.db   # Plant database (auto-created)
 ├── backups/                # Database backups (auto-created)
 └── history/                # Finalized cycle snapshots (auto-created)
 ```
