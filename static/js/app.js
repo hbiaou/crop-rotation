@@ -137,7 +137,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 autoBtn.disabled = true;
                 autoBtn.textContent = '⏳ ...';
 
-                fetch('/bootstrap/' + gardenId + '/auto-distribute', { method: 'POST' })
+                // Get CSRF token from the hidden input in the bootstrap form
+                var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+                fetch('/bootstrap/' + gardenId + '/auto-distribute', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         Object.keys(data).forEach(function (subbedId) {
