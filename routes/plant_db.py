@@ -561,14 +561,14 @@ def add_to_crops():
         flash("Plante introuvable.", 'error')
         return redirect(url_for('settings.index', tab='plantes'))
 
-    # Use preferred name or scientific name as crop name
-    crop_name = plant.get('preferred_name') or plant['scientific_name']
-    # Get preferred name from common_names if not at top level
-    if not crop_name or crop_name == plant['scientific_name']:
-        for cn in plant.get('common_names', []):
-            if cn.get('is_preferred'):
-                crop_name = cn['name']
-                break
+    # Use preferred common name if available, otherwise fall back to scientific name
+    crop_name = None
+    for cn in plant.get('common_names', []):
+        if cn.get('is_preferred'):
+            crop_name = cn['name']
+            break
+    if not crop_name:
+        crop_name = plant['scientific_name']
 
     category = plant.get('default_category', '')
     family = plant.get('family', '')
