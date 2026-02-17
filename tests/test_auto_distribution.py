@@ -14,7 +14,7 @@ import tempfile
 from collections import OrderedDict
 
 from app import create_app
-from database import init_db, seed_defaults, get_sub_beds, get_rotation_sequence, get_crops
+from database import init_db, seed_defaults, get_sub_beds, get_rotation_sequence
 
 
 @pytest.fixture
