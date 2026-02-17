@@ -58,6 +58,9 @@ history/
 # Logs
 *.log
 
+# Claude Code
+.claude/
+
 # Development documentation
 AGENTS.md
 FEATURES_SPEC.md
