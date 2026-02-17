@@ -1212,6 +1212,7 @@
         }
 
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('plant_id', plantId);
         formData.append('name', name);
         formData.append('lang', lang);
@@ -1240,6 +1241,7 @@
         if (!confirm('Supprimer ce nom commun ?')) return;
 
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('common_name_id', cnId);
 
         fetch('{{ url_for("plant_db.remove_cn") }}', {
@@ -1262,6 +1264,7 @@
 
     function setPreferredName(cnId, plantId) {
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('common_name_id', cnId);
 
         fetch('{{ url_for("plant_db.set_preferred") }}', {
@@ -1293,6 +1296,7 @@
         }
 
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('plant_id', plantId);
         formData.append('synonym', synonym);
 
@@ -1320,6 +1324,7 @@
         if (!confirm('Supprimer ce synonyme ?')) return;
 
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('synonym_id', synId);
 
         fetch('{{ url_for("plant_db.remove_syn") }}', {
