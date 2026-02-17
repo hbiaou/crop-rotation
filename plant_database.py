@@ -415,11 +415,15 @@ def get_plant(plant_id: int) -> Optional[Dict[str, Any]]:
         ).fetchall()
 
         # Find preferred name from common names
+        # First, look for explicitly preferred name
         preferred_name = None
         for cn in common_names:
             if 'is_preferred' in cn.keys() and cn['is_preferred']:
                 preferred_name = cn['common_name']
                 break
+        # Fallback to first common name if none is marked preferred
+        if preferred_name is None and common_names:
+            preferred_name = common_names[0]['common_name']
 
         return {
             'id': plant['id'],
