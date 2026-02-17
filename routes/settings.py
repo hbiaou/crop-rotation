@@ -253,40 +253,49 @@ def import_cycle():
 @settings_bp.route('/sub-bed/toggle', methods=['POST'])
 def sub_bed_toggle():
     """Toggle a sub-bed's reserve status. Returns JSON for AJAX calls."""
-    sub_bed_id = request.form.get('sub_bed_id', type=int)
-    is_reserve = request.form.get('is_reserve', '0')
-    is_reserve_bool = is_reserve in ('1', 'true', 'on')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    if not sub_bed_id:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'ID manquant'}), 400
-        flash("Sous-planche non spécifiée.", 'error')
+    try:
+        sub_bed_id = request.form.get('sub_bed_id', type=int)
+        is_reserve = request.form.get('is_reserve', '0')
+        is_reserve_bool = is_reserve in ('1', 'true', 'on')
+
+        if not sub_bed_id:
+            if is_ajax:
+                return jsonify({'success': False, 'error': 'ID manquant'}), 400
+            flash("Sous-planche non spécifiée.", 'error')
+            return redirect(url_for('settings.index', tab='jardins'))
+
+        result = toggle_sub_bed_reserve(sub_bed_id, is_reserve_bool)
+
+        if is_ajax:
+            if result:
+                # Return updated counts
+                from database import get_db
+                conn = get_db()
+                sb = conn.execute("SELECT garden_id FROM sub_beds WHERE id = ?", (sub_bed_id,)).fetchone()
+                if sb:
+                    stats = get_garden_stats(sb['garden_id'])
+                    conn.close()
+                    return jsonify({
+                        'success': True,
+                        'active': stats['active_sub_beds'],
+                        'reserve': stats['reserve_sub_beds'],
+                    })
+                conn.close()
+            return jsonify({'success': False, 'error': 'Erreur lors de la modification'}), 500
+
+        if result:
+            flash("Statut de la sous-planche mis à jour.", 'success')
+        else:
+            flash("Erreur lors de la modification du statut.", 'error')
         return redirect(url_for('settings.index', tab='jardins'))
 
-    result = toggle_sub_bed_reserve(sub_bed_id, is_reserve_bool)
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        if result:
-            # Return updated counts
-            from database import get_db
-            conn = get_db()
-            sb = conn.execute("SELECT garden_id FROM sub_beds WHERE id = ?", (sub_bed_id,)).fetchone()
-            if sb:
-                stats = get_garden_stats(sb['garden_id'])
-                conn.close()
-                return jsonify({
-                    'success': True,
-                    'active': stats['active_sub_beds'],
-                    'reserve': stats['reserve_sub_beds'],
-                })
-            conn.close()
-        return jsonify({'success': False, 'error': 'Erreur lors de la modification'}), 500
-
-    if result:
-        flash("Statut de la sous-planche mis à jour.", 'success')
-    else:
-        flash("Erreur lors de la modification du statut.", 'error')
-    return redirect(url_for('settings.index', tab='jardins'))
+    except Exception as e:
+        if is_ajax:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f"Erreur: {str(e)}", 'error')
+        return redirect(url_for('settings.index', tab='jardins'))
 
 
 # ========================================

@@ -81,7 +81,8 @@ def get_plant_db() -> sqlite3.Connection:
     db_path = get_plant_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
+    # timeout=30 allows waiting up to 30 seconds for a locked database
+    conn = sqlite3.connect(db_path, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.row_factory = sqlite3.Row

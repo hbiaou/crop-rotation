@@ -77,4 +77,12 @@ if __name__ == '__main__':
     # Debug mode: enabled by default for development (auto-reload on file changes)
     # Set FLASK_DEBUG=0 to disable for production
     debug = os.environ.get('FLASK_DEBUG', '1') != '0'
-    app.run(host='localhost', port=5000, debug=debug)
+
+    # Exclude .claude directory from file watcher to prevent restarts
+    # when Claude Code modifies its settings
+    app.run(
+        host='localhost',
+        port=5000,
+        debug=debug,
+        exclude_patterns=['*/.claude/*', '**/.claude/*', '.claude/*']
+    )

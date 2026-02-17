@@ -885,6 +885,7 @@
         var isReserve = checkbox.checked ? '1' : '0';
 
         var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
         formData.append('sub_bed_id', subBedId);
         formData.append('is_reserve', isReserve);
 
@@ -893,12 +894,16 @@
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         })
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                if (data.success) {
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (result.ok && result.data.success) {
                     // Update counts
-                    document.getElementById('active-count-' + gardenId).textContent = data.active;
-                    document.getElementById('reserve-count-' + gardenId).textContent = data.reserve;
+                    document.getElementById('active-count-' + gardenId).textContent = result.data.active;
+                    document.getElementById('reserve-count-' + gardenId).textContent = result.data.reserve;
 
                     // Update cell styling
                     var cell = checkbox.closest('.sub-bed-cell');
@@ -911,12 +916,12 @@
                         statusSpan.textContent = 'A';
                     }
                 } else {
-                    alert('Erreur: ' + (data.error || 'Inconnue'));
+                    alert('Erreur: ' + (result.data.error || 'Inconnue'));
                     checkbox.checked = !checkbox.checked;
                 }
             })
-            .catch(function () {
-                alert('Erreur de connexion');
+            .catch(function (err) {
+                alert('Erreur de connexion: ' + err.message);
                 checkbox.checked = !checkbox.checked;
             });
     }
