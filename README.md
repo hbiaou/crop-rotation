@@ -231,6 +231,10 @@ All user-facing text is in **French**. UI strings are centralized in `i18n/fr.js
 
 **BIAOU Samadori S. Honoré**
 
+## Contributing
+
+Contributions welcome! Feel free to open issues or submit pull requests.
+
 ## License
 
 This project is provided as-is for personal and educational use.
