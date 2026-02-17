@@ -9,7 +9,8 @@ A web application for planning and managing crop rotation in market gardens. Bui
 - **🚀 Bootstrap** — Initial setup wizard to assign categories and crops to every sub-bed in a garden
 - **⚡ Cycle Generation** — Automatic rotation based on a configurable 5-category sequence (Feuille → Graine → Racine → Fruit → Couverture)
 - **🌿 Crop Families** — Group crops by botanical family (e.g., Solanacées, Fabacées) for better rotation planning
-- **🎲 Smart Randomization** — Randomized starting point for new gardens to ensure diverse initial layouts
+- **🎲 Smart Randomization** — Randomized starting category for new gardens to ensure diverse initial layouts
+- **🛏️ Bed-First Auto-Distribution** — Allocates crops bed-by-bed with category cycling to avoid consecutive repeats
 - **📊 Distribution Adjustment** — Fine-tune crop percentages per category with live preview of bed counts
 - **🗺️ Map Visualization** — Color-coded garden map showing planned and actual crops, with override indicators
 - **📍 Scroll Preservation** — Map view remembers your scroll position after editing sub-beds
@@ -48,6 +49,27 @@ The rotation engine now applies penalties at three levels for disease management
 - **Same Family Penalty** — Lighter penalty for crops in the same botanical family (e.g., tomato after pepper — both Solanaceae)
 
 This enables proper rotation planning for crops like Brassicas (cabbage, broccoli, cauliflower all share *Brassica oleracea*) and peppers (multiple *Capsicum annuum* varieties).
+
+### 🛏️ Bed-First Auto-Distribution Algorithm (v1.3.0+)
+
+The "Auto-distribuer" feature uses a bed-first allocation strategy that ensures proper category cycling:
+
+**How it works:**
+1. **Bed-first traversal**: Beds are processed in order (P1 → P2 → ... → Pn), with each bed's sub-beds (S1 → S2 → S3 → S4) filled before moving to the next bed
+2. **Primary category per bed**: Each bed has a "primary category" assigned to its first sub-bed (S1), which advances through the rotation sequence for each new bed
+3. **Category cycling**: P1 gets category A, P2 gets category B, P3 gets category C, etc., cycling through the 5-category rotation sequence
+4. **No consecutive repeats**: Consecutive beds will not have the same primary category or starter crop unless quotas force it
+
+**Quota-driven spillover:**
+- When a category's quota is exhausted mid-bed, remaining sub-beds spill to the next category in the sequence
+- When a crop's quota within a category is exhausted, the next crop in that category is used
+- Repeats across consecutive beds are allowed only when quota boundaries force them
+
+**Randomization:**
+- Only the starting category offset is randomized (e.g., P1 might start with Racine instead of Feuille)
+- Crop selection order within categories remains deterministic based on distribution percentages
+
+This algorithm ensures a visually coherent map where each bed block primarily shows one category, with natural transitions at quota boundaries.
 
 ## Quick Start
 

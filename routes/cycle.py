@@ -87,11 +87,15 @@ def _load_distribution_defaults():
 def _compute_auto_distribution(garden_id):
     """Compute automatic category+crop distribution for a garden's active sub-beds.
 
-    Algorithm:
-    1. Get active sub-beds, rotation sequence, crops, and distribution defaults
-    2. Divide sub-beds evenly across categories (remainder goes to first category)
-    3. Within each category, distribute crops proportionally using default percentages
-    4. Return dict: {sub_bed_id: {'category': str, 'crop_id': int|None}}
+    Algorithm (bed-first with bed-to-bed category cycling):
+    1. Traverse beds in order: P1 → P2 → ... → Pn
+    2. For each bed, fill sub-beds S1 → S2 → S3 → S4 in order
+    3. Each bed has a PRIMARY category that advances through the rotation sequence
+    4. Quotas determine how many sub-beds each category/crop gets
+    5. Spillover mid-bed when quota exhausted; no consecutive bed-starts repeat category/crop
+       unless forced by quota boundary conditions
+
+    Returns dict: {sub_bed_id: {'category': str, 'crop_id': int|None}}
     """
     from database import get_garden
     garden = get_garden(garden_id)
@@ -119,13 +123,10 @@ def _compute_auto_distribution(garden_id):
     garden_code = garden['garden_code']
     garden_defaults = dist_defaults.get(garden_code, {})
 
-    total_beds = len(active_beds)
+    total_sub_beds = len(active_beds)
     num_categories = len(categories)
 
-    # ── Step 1: Interleave categories across BEDS (round-robin) ──
-    # Group sub-beds by bed_number first, then assign one category per bed.
-    # When division is uneven, boundary beds split sub-beds across categories.
-    from collections import OrderedDict
+    # ── Step 1: Group sub-beds by bed_number (ordered) ──
     beds_grouped = OrderedDict()
     for sb in active_beds:
         bn = sb['bed_number']
@@ -133,100 +134,169 @@ def _compute_auto_distribution(garden_id):
             beds_grouped[bn] = []
         beds_grouped[bn].append(sb)
 
-    # Balanced sub-bed targets per category
-    target_per_cat = {}
-    base_count = total_beds // num_categories
-    cat_remainder = total_beds % num_categories
+    # ── Step 2: Calculate category quotas (sub-bed counts) ──
+    category_quota = {}
+    base_count = total_sub_beds // num_categories
+    cat_remainder = total_sub_beds % num_categories
     for i, cat in enumerate(categories):
-        target_per_cat[cat] = base_count + (1 if i < cat_remainder else 0)
+        category_quota[cat] = base_count + (1 if i < cat_remainder else 0)
 
-    # Round-robin at BED level, with spillover when a category is full
-    cat_to_beds = {cat: [] for cat in categories}
-    cat_filled = {cat: 0 for cat in categories}
+    # ── Step 3: Calculate crop quotas within each category ──
+    crop_quota = {}  # {crop_id: remaining_quota}
+    crop_order_by_cat = {}  # {category: [crop_id, ...]} in deterministic order
 
-    # Randomize the starting category index for "Démarrage à Zéro"
-    start_offset = random.randint(0, num_categories - 1)
-
-    for bed_idx, bed_number in enumerate(beds_grouped):
-        sub_beds_list = beds_grouped[bed_number]
-        # Apply offset to rotation
-        primary_cat = categories[(bed_idx + start_offset) % num_categories]
-
-        for sb in sub_beds_list:
-            # Use primary category if it still has room
-            if cat_filled[primary_cat] < target_per_cat[primary_cat]:
-                cat_to_beds[primary_cat].append(sb)
-                cat_filled[primary_cat] += 1
-            else:
-                # Spill to next under-filled category
-                for cat in categories:
-                    if cat_filled[cat] < target_per_cat[cat]:
-                        cat_to_beds[cat].append(sb)
-                        cat_filled[cat] += 1
-                        break
-
-    # ── Step 2: Within each category, distribute crops proportionally ──
-    result = {}
     for category in categories:
-        cat_beds = cat_to_beds[category]
-        if not cat_beds:
-            continue
-
-        # Get crop distribution for this category
         cat_crops = crops_by_cat.get(category, [])
         cat_defaults = garden_defaults.get(category, {})
+        cat_total = category_quota[category]
 
         if not cat_crops:
-            # No crops for this category — assign category only
-            for bed in cat_beds:
-                result[bed['id']] = {'category': category, 'crop_id': None}
+            crop_order_by_cat[category] = []
             continue
 
         # Calculate crop counts from percentages
-        crop_assignments = []
         total_pct = sum(cat_defaults.get(c['crop_name'], 0) for c in cat_crops)
+        crop_counts = []
 
         if total_pct > 0:
-            # Use percentage-based distribution
-            remaining_beds = len(cat_beds)
+            remaining = cat_total
             for i, crop in enumerate(cat_crops):
                 pct = cat_defaults.get(crop['crop_name'], 0)
                 if pct == 0:
                     continue
-                if i == len(cat_crops) - 1 or remaining_beds <= 0:
-                    # Last crop gets remainder
-                    crop_count = remaining_beds
+                if i == len(cat_crops) - 1 or remaining <= 0:
+                    count = remaining
                 else:
-                    crop_count = max(0, round(pct / total_pct * len(cat_beds)))
-                    crop_count = min(crop_count, remaining_beds)
-                remaining_beds -= crop_count
-                crop_assignments.append((crop, crop_count))
+                    count = max(0, round(pct / total_pct * cat_total))
+                    count = min(count, remaining)
+                remaining -= count
+                crop_counts.append((crop['id'], count))
+                crop_quota[crop['id']] = count
 
-            # If any beds left unassigned, give to last crop
-            if remaining_beds > 0 and crop_assignments:
-                last = crop_assignments[-1]
-                crop_assignments[-1] = (last[0], last[1] + remaining_beds)
+            # Remainder to last crop
+            if remaining > 0 and crop_counts:
+                last_id, last_count = crop_counts[-1]
+                crop_quota[last_id] = last_count + remaining
+                crop_counts[-1] = (last_id, last_count + remaining)
         else:
             # Equal distribution if no defaults
-            # Shuffle crops to randomize which one comes first in the block
-            random.shuffle(cat_crops)
-            per_crop = len(cat_beds) // len(cat_crops)
-            leftover = len(cat_beds) % len(cat_crops)
+            per_crop = cat_total // len(cat_crops)
+            leftover = cat_total % len(cat_crops)
             for i, crop in enumerate(cat_crops):
                 extra = 1 if i < leftover else 0
-                crop_assignments.append((crop, per_crop + extra))
+                crop_counts.append((crop['id'], per_crop + extra))
+                crop_quota[crop['id']] = per_crop + extra
 
-        # Assign crops to beds
-        assign_idx = 0
-        for crop, count in crop_assignments:
-            for _ in range(count):
-                if assign_idx < len(cat_beds):
-                    bed = cat_beds[assign_idx]
-                    result[bed['id']] = {
-                        'category': category,
-                        'crop_id': crop['id']
-                    }
-                    assign_idx += 1
+        # Store deterministic crop order for this category
+        crop_order_by_cat[category] = [cid for cid, _ in crop_counts if crop_quota.get(cid, 0) > 0]
+
+    # ── Step 4: Bed-first allocation with bed-to-bed category cycling ──
+    result = {}
+
+    # Randomize starting category offset (only randomization allowed)
+    start_offset = random.randint(0, num_categories - 1)
+
+    # Track current position in category sequence (for primary category assignment)
+    primary_cat_index = start_offset
+
+    # Track the crop used to start the previous bed (for avoiding consecutive repeats)
+    prev_bed_starter_crop = None
+
+    # Track current category and crop pointers for spillover continuity
+    current_cat_index = start_offset
+    current_crop_index_by_cat = {cat: 0 for cat in categories}
+
+    def get_next_category_with_quota(from_index):
+        """Find next category with remaining quota, cycling through sequence."""
+        for offset in range(num_categories):
+            idx = (from_index + offset) % num_categories
+            cat = categories[idx]
+            if category_quota[cat] > 0:
+                return idx, cat
+        return None, None
+
+    def get_next_crop_with_quota(category, start_idx=0, avoid_crop=None):
+        """Find next crop with remaining quota in this category, optionally avoiding a specific crop."""
+        crop_ids = crop_order_by_cat.get(category, [])
+        if not crop_ids:
+            return None
+
+        # First pass: find a crop with quota that's not the avoided one
+        for offset in range(len(crop_ids)):
+            idx = (start_idx + offset) % len(crop_ids)
+            crop_id = crop_ids[idx]
+            if crop_quota.get(crop_id, 0) > 0 and crop_id != avoid_crop:
+                return crop_id
+
+        # Second pass: if we must use avoided crop (only option left)
+        for offset in range(len(crop_ids)):
+            idx = (start_idx + offset) % len(crop_ids)
+            crop_id = crop_ids[idx]
+            if crop_quota.get(crop_id, 0) > 0:
+                return crop_id
+
+        return None
+
+    for bed_idx, bed_number in enumerate(beds_grouped):
+        sub_beds_list = beds_grouped[bed_number]
+
+        # Determine primary category for this bed (advances each bed)
+        primary_cat_index, primary_cat = get_next_category_with_quota(primary_cat_index)
+        if primary_cat is None:
+            # No more quota anywhere - shouldn't happen with correct quotas
+            break
+
+        # For the first sub-bed (S1), set the primary category
+        is_first_sub_bed = True
+
+        for sb in sub_beds_list:
+            sb_id = sb['id']
+
+            if is_first_sub_bed:
+                # Use the primary category for this bed's first sub-bed
+                current_cat_index = primary_cat_index
+                is_first_sub_bed = False
+
+                # Advance primary category for next bed
+                primary_cat_index = (primary_cat_index + 1) % num_categories
+
+            # Find current category with quota
+            cat_idx, category = get_next_category_with_quota(current_cat_index)
+            if category is None:
+                break  # No more quota
+
+            # Find crop for this sub-bed
+            crop_start_idx = current_crop_index_by_cat.get(category, 0)
+
+            # For bed starters (S1), avoid repeating previous bed's starter crop if possible
+            avoid_crop = prev_bed_starter_crop if sb['sub_bed_position'] == 1 else None
+            crop_id = get_next_crop_with_quota(category, crop_start_idx, avoid_crop)
+
+            # Assign to result
+            result[sb_id] = {
+                'category': category,
+                'crop_id': crop_id
+            }
+
+            # Track bed starter crop
+            if sb['sub_bed_position'] == 1:
+                prev_bed_starter_crop = crop_id
+
+            # Decrement quotas
+            category_quota[category] -= 1
+            if crop_id is not None:
+                crop_quota[crop_id] -= 1
+
+                # If this crop's quota is exhausted, advance crop index
+                if crop_quota[crop_id] <= 0:
+                    crop_ids = crop_order_by_cat.get(category, [])
+                    if crop_ids:
+                        current_idx = crop_ids.index(crop_id) if crop_id in crop_ids else 0
+                        current_crop_index_by_cat[category] = (current_idx + 1) % len(crop_ids)
+
+            # If category quota exhausted, spillover to next category
+            if category_quota[category] <= 0:
+                current_cat_index = (cat_idx + 1) % num_categories
 
     return result
 
