@@ -33,7 +33,7 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    csrf = CSRFProtect(app)
+    CSRFProtect(app)
 
     # Ensure data and backup directories exist
     base_dir = os.path.dirname(os.path.abspath(__file__))

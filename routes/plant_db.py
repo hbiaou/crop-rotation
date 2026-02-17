@@ -24,7 +24,6 @@ from flask import Blueprint, request, jsonify, flash, redirect, url_for, Respons
 import json
 
 from plant_database import (
-    init_plant_db,
     check_plant_db_health,
     get_all_plants,
     get_plant,

@@ -12,13 +12,11 @@ Tests cover:
 import pytest
 import os
 import tempfile
-import json
 
 # Import the plant database module
 from plant_database import (
     normalize_name,
     init_plant_db,
-    get_plant_db,
     create_plant,
     get_plant,
     get_all_plants,
@@ -28,7 +26,6 @@ from plant_database import (
     update_common_name,
     delete_common_name,
     add_synonym,
-    delete_synonym,
     search_plants,
     check_duplicate,
     export_plants_json,
