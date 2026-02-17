@@ -414,10 +414,18 @@ def get_plant(plant_id: int) -> Optional[Dict[str, Any]]:
             (plant_id,)
         ).fetchall()
 
+        # Find preferred name from common names
+        preferred_name = None
+        for cn in common_names:
+            if 'is_preferred' in cn.keys() and cn['is_preferred']:
+                preferred_name = cn['common_name']
+                break
+
         return {
             'id': plant['id'],
             'scientific_name': plant['scientific_name'],
             'scientific_name_norm': plant['scientific_name_norm'],
+            'preferred_name': preferred_name,
             'base_species': plant['base_species'] if 'base_species' in plant.keys() else '',
             'base_species_norm': plant['base_species_norm'] if 'base_species_norm' in plant.keys() else '',
             'infraspecific_detail': plant['infraspecific_detail'] if 'infraspecific_detail' in plant.keys() else '',
@@ -1152,9 +1160,16 @@ def _build_search_result(cursor, row, ranking: str) -> Dict[str, Any]:
     """Build a search result dict from a row."""
     # Get common names for this plant
     common_names = cursor.execute(
-        "SELECT common_name, lang FROM plant_common_names WHERE plant_id = ?",
+        "SELECT common_name, lang, is_preferred FROM plant_common_names WHERE plant_id = ?",
         (row['id'],)
     ).fetchall()
+
+    # Find preferred name
+    preferred_name = None
+    for cn in common_names:
+        if cn['is_preferred']:
+            preferred_name = cn['common_name']
+            break
 
     return {
         'plant_id': row['id'],
@@ -1164,6 +1179,7 @@ def _build_search_result(cursor, row, ranking: str) -> Dict[str, Any]:
         'ranking': ranking,
         'family': row['family'],
         'default_category': row['default_category'],
+        'preferred_name': preferred_name,
         'common_names': [{'name': cn['common_name'], 'lang': cn['lang']} for cn in common_names]
     }
 
@@ -1497,6 +1513,7 @@ def get_plant_suggestions(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             'plant_id': r['plant_id'],
             'scientific_name': r['scientific_name'],
             'display_name': r['matched_name'],
+            'preferred_name': r.get('preferred_name'),
             'family': r['family'],
             'default_category': r['default_category'],
             'match_type': r['match_type']

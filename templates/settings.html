@@ -1437,6 +1437,7 @@
         var html = '';
 
         suggestions.forEach(function(s, index) {
+            var mainName = s.preferred_name || s.scientific_name;
             var matchInfo = '';
             if (s.match_type === 'common_name') {
                 matchInfo = '<div class="autocomplete-match">Trouvé via: ' + s.display_name + '</div>';
@@ -1445,8 +1446,9 @@
             }
 
             html += '<div class="autocomplete-item" data-index="' + index + '" onclick="selectPlantSuggestion(' + index + ')">' +
-                '<div class="autocomplete-main">' + s.scientific_name + '</div>' +
+                '<div class="autocomplete-main">' + mainName + '</div>' +
                 '<div class="autocomplete-sub">' +
+                (s.preferred_name ? '<em>' + s.scientific_name + '</em> • ' : '') +
                 (s.family ? s.family : 'Famille inconnue') +
                 (s.default_category ? ' • ' + s.default_category : '') +
                 '</div>' +
@@ -1462,8 +1464,8 @@
         var s = currentSuggestions[index];
         if (!s) return;
 
-        // Fill in the form fields
-        document.getElementById('cropNameInput').value = s.display_name || s.scientific_name;
+        // Fill in the form fields - use preferred_name if available
+        document.getElementById('cropNameInput').value = s.preferred_name || s.display_name || s.scientific_name;
         document.getElementById('cropPlantId').value = s.plant_id;
 
         if (s.family) {
@@ -1480,9 +1482,12 @@
             }
         }
 
-        // Show link info
+        // Show link info with preferred name and scientific name
         var linkInfo = document.getElementById('plantLinkInfo');
-        linkInfo.innerHTML = '✓ Lié à la plante: <strong>' + s.scientific_name + '</strong>';
+        var displayText = s.preferred_name
+            ? s.preferred_name + ' (<em>' + s.scientific_name + '</em>)'
+            : s.scientific_name;
+        linkInfo.innerHTML = '✓ Lié à la plante: <strong>' + displayText + '</strong>';
         linkInfo.style.display = 'block';
 
         // Hide dropdown
