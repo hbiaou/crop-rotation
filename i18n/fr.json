@@ -107,6 +107,7 @@
         "undo_generate": "Êtes-vous sûr de vouloir annuler la génération du cycle {cycle} ?",
         "generate_cycle": "Générer le prochain cycle ? Une sauvegarde automatique sera créée.",
         "restore_backup": "Êtes-vous sûr de vouloir restaurer cette sauvegarde ? Les données actuelles seront remplacées.",
+        "delete_backup": "Êtes-vous sûr de vouloir supprimer cette sauvegarde ?",
         "finalize_cycle": "Finaliser ce cycle ? Un instantané sera sauvegardé dans l'historique.",
         "bootstrap": "Démarrer la saisie initiale pour ce jardin ?"
     },

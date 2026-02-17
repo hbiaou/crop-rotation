@@ -44,6 +44,7 @@ from plant_database import (
     get_plant_count,
     set_preferred_name
 )
+from database import create_crop, get_crops
 
 plant_db_bp = Blueprint('plant_db', __name__, url_prefix='/plants')
 
@@ -535,6 +536,83 @@ def export_json():
             return jsonify({'success': False, 'error': str(e)}), 500
         flash(f"Erreur lors de l'export: {str(e)}", 'error')
         return redirect(url_for('settings.index', tab='plantes'))
+
+
+@plant_db_bp.route('/add-to-crops', methods=['POST'])
+def add_to_crops():
+    """Add a plant to the crops table for use in rotations."""
+    if request.is_json:
+        data = request.get_json()
+        plant_id = data.get('plant_id')
+    else:
+        plant_id = request.form.get('plant_id', type=int)
+
+    if not plant_id:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'ID de plante manquant'}), 400
+        flash("ID de plante manquant.", 'error')
+        return redirect(url_for('settings.index', tab='plantes'))
+
+    # Get plant details
+    plant = get_plant(plant_id)
+    if not plant:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Plante introuvable'}), 404
+        flash("Plante introuvable.", 'error')
+        return redirect(url_for('settings.index', tab='plantes'))
+
+    # Use preferred name or scientific name as crop name
+    crop_name = plant.get('preferred_name') or plant['scientific_name']
+    # Get preferred name from common_names if not at top level
+    if not crop_name or crop_name == plant['scientific_name']:
+        for cn in plant.get('common_names', []):
+            if cn.get('is_preferred'):
+                crop_name = cn['name']
+                break
+
+    category = plant.get('default_category', '')
+    family = plant.get('family', '')
+
+    if not category:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'error': 'Cette plante n\'a pas de catégorie définie. Modifiez-la d\'abord.'
+            }), 400
+        flash("Cette plante n'a pas de catégorie définie. Modifiez-la d'abord.", 'error')
+        return redirect(url_for('settings.index', tab='plantes'))
+
+    # Check if crop already exists
+    existing_crops = get_crops()
+    for crop in existing_crops:
+        if crop['crop_name'].lower() == crop_name.lower():
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': False,
+                    'error': f'La culture « {crop_name} » existe déjà.'
+                }), 400
+            flash(f"La culture « {crop_name} » existe déjà.", 'warning')
+            return redirect(url_for('settings.index', tab='plantes'))
+
+    # Create the crop
+    result = create_crop(crop_name, category, family, plant_id)
+
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if result:
+            return jsonify({
+                'success': True,
+                'message': f'Culture « {crop_name} » ajoutée avec succès.',
+                'crop_name': crop_name,
+                'category': category
+            })
+        return jsonify({'success': False, 'error': 'Erreur lors de la création de la culture'}), 500
+
+    if result:
+        flash(f"Culture « {crop_name} » ajoutée avec succès.", 'success')
+    else:
+        flash("Erreur lors de la création de la culture.", 'error')
+
+    return redirect(url_for('settings.index', tab='plantes'))
 
 
 @plant_db_bp.route('/import', methods=['POST'])

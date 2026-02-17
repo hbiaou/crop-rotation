@@ -127,3 +127,33 @@ def restore_db(filename):
         return True
     except Exception:
         return False
+
+
+def delete_backup(filename: str) -> bool:
+    """
+    Delete a backup file from the backups/ directory.
+
+    Args:
+        filename: Name of the backup file to delete.
+
+    Returns:
+        True on success, False on failure.
+    """
+    # Security check: Prevent path traversal
+    if '..' in filename or '/' in filename or '\\' in filename:
+        return False
+
+    # Validate it's a real backup file (basic safety check)
+    if not filename.startswith('crop_rotation_') or not filename.endswith('.db'):
+        return False
+
+    backup_path = os.path.join(BACKUP_DIR, filename)
+
+    if not os.path.exists(backup_path):
+        return False
+
+    try:
+        os.remove(backup_path)
+        return True
+    except Exception:
+        return False

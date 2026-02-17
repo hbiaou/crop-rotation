@@ -191,7 +191,7 @@
                 <div class="form-row form-row-3">
                     <div class="form-group">
                         <label class="form-label" for="add-garden-code">{{ i18n.labels.garden_code }}</label>
-                        <input type="text" name="garden_code" id="add-garden-code" class="form-input" placeholder="G3" required
+                        <input type="text" name="garden_code" id="add-garden-code" class="form-input" placeholder="J1" value="J" required
                             pattern="[A-Za-z0-9]+" title="Lettres et chiffres uniquement">
                     </div>
                     <div class="form-group">
@@ -503,15 +503,26 @@
                             <td><span class="cat-badge cat-reserve">{{ backup.reason }}</span></td>
                             <td>{{ backup.size_display }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('settings.backup_restore') }}"
-                                    style="display:inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="filename" value="{{ backup.filename }}">
-                                    <button type="submit" class="btn btn-sm btn-danger"
-                                        data-confirm="{{ i18n.confirm.restore_backup }}">
-                                        🔄 {{ i18n.buttons.restore }}
-                                    </button>
-                                </form>
+                                <div class="d-flex gap-sm">
+                                    <form method="POST" action="{{ url_for('settings.backup_restore') }}"
+                                        style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="filename" value="{{ backup.filename }}">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                            data-confirm="{{ i18n.confirm.restore_backup }}">
+                                            🔄 {{ i18n.buttons.restore }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('settings.backup_delete') }}"
+                                        style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="filename" value="{{ backup.filename }}">
+                                        <button type="submit" class="btn btn-sm btn-secondary"
+                                            data-confirm="{{ i18n.confirm.delete_backup }}">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -752,6 +763,13 @@
                             </td>
                             <td>
                                 <div class="d-flex gap-sm">
+                                    {% if plant.default_category %}
+                                    <button type="button" class="btn btn-sm btn-accent"
+                                        onclick="addPlantToCrops({{ plant.id }})"
+                                        title="Ajouter aux cultures">
+                                        ➕
+                                    </button>
+                                    {% endif %}
                                     <button type="button" class="btn btn-sm btn-secondary"
                                         onclick="editPlant({{ plant.id }})">
                                         ✏️
@@ -1336,6 +1354,37 @@
         .then(function(data) {
             if (data.success) {
                 btn.closest('[data-syn-id]').remove();
+            } else {
+                alert('Erreur: ' + (data.error || 'Inconnue'));
+            }
+        })
+        .catch(function() {
+            alert('Erreur de connexion');
+        });
+    }
+
+    // ========================================
+    // Add Plant to Crops
+    // ========================================
+
+    function addPlantToCrops(plantId) {
+        if (!confirm('Ajouter cette plante aux cultures actives ?')) return;
+
+        var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+        formData.append('plant_id', plantId);
+
+        fetch('{{ url_for("plant_db.add_to_crops") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('✓ ' + data.message);
+                // Optionally reload to update the Cultures tab
+                location.reload();
             } else {
                 alert('Erreur: ' + (data.error || 'Inconnue'));
             }

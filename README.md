@@ -39,6 +39,7 @@ A separate, canonical database for managing plant information:
 - **Auto-fill Crops** — When adding crops, type to search the plant database and auto-fill family and category
 - **JSON Import/Export** — Download your plant database as JSON, or import from external sources (merge or replace modes)
 - **Separate Storage** — Plant data stored in its own SQLite database (`plant_database.db`), keeping it independent from rotation data
+- **Add to Crops** — Quickly promote plants from the reference database to active crops with one click (➕ button)
 
 ### 🔄 Smart Rotation Algorithm (v1.2.0+)
 
@@ -81,7 +82,7 @@ This algorithm ensures a visually coherent map where each bed block primarily sh
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/crop-rotation.git
+git clone https://github.com/hbiaou/crop-rotation.git
 cd crop-rotation
 pip install -r requirements.txt
 ```
@@ -101,6 +102,32 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 3. Use **"Auto-distribuer"** on the bootstrap page to fill in crops automatically, or assign them manually
 4. Once bootstrapped, view your garden map, generate the next cycle, and adjust distributions
 5. Records of historical cycles (e.g. from previous years) can be entered by manually setting the cycle ID during bootstrap (see below).
+
+### Adding New Crops
+
+The app uses a two-database architecture:
+
+| Database | Purpose | Contains |
+|----------|---------|----------|
+| **Plant Database** (`plant_database.db`) | Reference library | All plants with scientific names, families, categories |
+| **Crops Table** (`crop_rotation.db`) | Active crops | Only crops you actually grow |
+
+**To add a new crop for use in rotations:**
+
+1. Go to **Settings > Base Plantes** tab
+2. Find your plant in the list (or add it if missing)
+3. Make sure the plant has a **category** assigned (Feuille, Graine, Racine, Fruit, or Couverture)
+4. Click the **➕** button to add it to your active crops
+5. The crop will now appear in:
+   - **Settings > Cultures** tab
+   - **Settings > Répartition** tab (for setting distribution percentages)
+   - Bootstrap and distribution pages
+
+**Why this workflow?**
+
+- The **Plant Database** is a reference library — it can contain hundreds of plants you might grow someday
+- The **Crops table** contains only what you're actively growing — keeping dropdowns and distribution pages manageable
+- This prevents cluttered UIs when you have a large plant database but only grow 20-30 crops at a time
 
 ### Historical Data & Imbalance Correction
 

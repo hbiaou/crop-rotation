@@ -31,7 +31,7 @@ from database import (
 from plant_database import (
     get_all_plants, check_plant_db_health, get_plant_count
 )
-from utils.backup import backup_db, list_backups, restore_db
+from utils.backup import backup_db, list_backups, restore_db, delete_backup
 import json
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
@@ -427,6 +427,23 @@ def backup_restore():
         flash(f"Base de données restaurée depuis {filename}.", 'success')
     else:
         flash("Erreur lors de la restauration. Vérifiez le fichier.", 'error')
+
+    return redirect(url_for('settings.index', tab='sauvegardes'))
+
+
+@settings_bp.route('/backup/delete', methods=['POST'])
+def backup_delete():
+    """Delete a backup file."""
+    filename = request.form.get('filename', '').strip()
+    if not filename:
+        flash("Fichier de sauvegarde non spécifié.", 'error')
+        return redirect(url_for('settings.index', tab='sauvegardes'))
+
+    result = delete_backup(filename)
+    if result:
+        flash(f"Sauvegarde {filename} supprimée.", 'success')
+    else:
+        flash("Erreur lors de la suppression de la sauvegarde.", 'error')
 
     return redirect(url_for('settings.index', tab='sauvegardes'))
 
