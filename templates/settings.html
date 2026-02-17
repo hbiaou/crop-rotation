@@ -111,29 +111,29 @@
                         <input type="hidden" name="garden_id" value="{{ gd.garden.id }}">
                         <div class="form-row form-row-4">
                             <div class="form-group">
-                                <label class="form-label">{{ i18n.labels.garden_name }}</label>
-                                <input type="text" name="name" class="form-input" value="{{ gd.garden.name }}" required>
+                                <label class="form-label" for="edit-garden-name-{{ gd.garden.id }}">{{ i18n.labels.garden_name }}</label>
+                                <input type="text" name="name" id="edit-garden-name-{{ gd.garden.id }}" class="form-input" value="{{ gd.garden.name }}" required autocomplete="off">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">{{ i18n.labels.bed_count }}</label>
-                                <input type="number" name="beds" class="form-input" value="{{ gd.garden.beds }}" min="1"
+                                <label class="form-label" for="edit-garden-beds-{{ gd.garden.id }}">{{ i18n.labels.bed_count }}</label>
+                                <input type="number" name="beds" id="edit-garden-beds-{{ gd.garden.id }}" class="form-input" value="{{ gd.garden.beds }}" min="1"
                                     required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">{{ i18n.labels.bed_length }}</label>
-                                <input type="number" name="bed_length_m" class="form-input"
+                                <label class="form-label" for="edit-garden-length-{{ gd.garden.id }}">{{ i18n.labels.bed_length }}</label>
+                                <input type="number" name="bed_length_m" id="edit-garden-length-{{ gd.garden.id }}" class="form-input"
                                     value="{{ gd.garden.bed_length_m }}" step="0.1" min="0.1" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">{{ i18n.labels.bed_width }}</label>
-                                <input type="number" name="bed_width_m" class="form-input"
+                                <label class="form-label" for="edit-garden-width-{{ gd.garden.id }}">{{ i18n.labels.bed_width }}</label>
+                                <input type="number" name="bed_width_m" id="edit-garden-width-{{ gd.garden.id }}" class="form-input"
                                     value="{{ gd.garden.bed_width_m }}" step="0.1" min="0.1" required>
                             </div>
                         </div>
                         <div class="form-row form-row-4 mt-md">
                             <div class="form-group">
-                                <label class="form-label">{{ i18n.labels.sub_beds_per_bed }}</label>
-                                <input type="number" name="sub_beds_per_bed" class="form-input"
+                                <label class="form-label" for="edit-garden-subbeds-{{ gd.garden.id }}">{{ i18n.labels.sub_beds_per_bed }}</label>
+                                <input type="number" name="sub_beds_per_bed" id="edit-garden-subbeds-{{ gd.garden.id }}" class="form-input"
                                     value="{{ gd.garden.sub_beds_per_bed }}" min="1" required>
                             </div>
                             <div class="form-group" style="align-self: end">
@@ -190,33 +190,33 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row form-row-3">
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.garden_code }}</label>
-                        <input type="text" name="garden_code" class="form-input" placeholder="G3" required
+                        <label class="form-label" for="add-garden-code">{{ i18n.labels.garden_code }}</label>
+                        <input type="text" name="garden_code" id="add-garden-code" class="form-input" placeholder="G3" required
                             pattern="[A-Za-z0-9]+" title="Lettres et chiffres uniquement">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.garden_name }}</label>
-                        <input type="text" name="name" class="form-input" placeholder="Nouveau Jardin" required>
+                        <label class="form-label" for="add-garden-name">{{ i18n.labels.garden_name }}</label>
+                        <input type="text" name="name" id="add-garden-name" class="form-input" placeholder="Nouveau Jardin" required autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.bed_count }}</label>
-                        <input type="number" name="beds" class="form-input" placeholder="10" min="1" required>
+                        <label class="form-label" for="add-garden-beds">{{ i18n.labels.bed_count }}</label>
+                        <input type="number" name="beds" id="add-garden-beds" class="form-input" placeholder="10" min="1" required>
                     </div>
                 </div>
                 <div class="form-row form-row-3 mt-md">
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.bed_length }}</label>
-                        <input type="number" name="bed_length_m" class="form-input" placeholder="25.0" step="0.1"
+                        <label class="form-label" for="add-garden-length">{{ i18n.labels.bed_length }}</label>
+                        <input type="number" name="bed_length_m" id="add-garden-length" class="form-input" placeholder="25.0" step="0.1"
                             min="0.1" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.bed_width }}</label>
-                        <input type="number" name="bed_width_m" class="form-input" value="1.0" step="0.1" min="0.1"
+                        <label class="form-label" for="add-garden-width">{{ i18n.labels.bed_width }}</label>
+                        <input type="number" name="bed_width_m" id="add-garden-width" class="form-input" value="1.0" step="0.1" min="0.1"
                             required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.sub_beds_per_bed }}</label>
-                        <input type="number" name="sub_beds_per_bed" class="form-input" placeholder="2" min="1"
+                        <label class="form-label" for="add-garden-subbeds">{{ i18n.labels.sub_beds_per_bed }}</label>
+                        <input type="number" name="sub_beds_per_bed" id="add-garden-subbeds" class="form-input" placeholder="2" min="1"
                             required>
                     </div>
                 </div>
@@ -260,7 +260,8 @@
                             class="d-flex gap-sm align-center">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="crop_id" value="{{ crop.id }}">
-                            <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <label class="sr-only" for="category-select-{{ crop.id }}">Catégorie</label>
+                            <select name="category" id="category-select-{{ crop.id }}" class="form-select form-select-sm" onchange="this.form.submit()">
                                 {% for c in categories %}
                                 <option value="{{ c }}" {% if c==crop.category %}selected{% endif %}>{{ c }}</option>
                                 {% endfor %}
@@ -297,14 +298,14 @@
                 <input type="hidden" name="plant_id" id="cropPlantId" value="">
                 <div class="form-row">
                     <div class="form-group" style="position: relative;">
-                        <label class="form-label">{{ i18n.labels.crop_name }}</label>
+                        <label class="form-label" for="cropNameInput">{{ i18n.labels.crop_name }}</label>
                         <input type="text" name="crop_name" id="cropNameInput" class="form-input"
                             placeholder="Nom de la culture" required autocomplete="off"
                             oninput="searchPlantSuggestions(this.value)">
                         <div id="cropSuggestions" class="autocomplete-dropdown" style="display:none"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ i18n.labels.crop_category }}</label>
+                        <label class="form-label" for="cropCategorySelect">{{ i18n.labels.crop_category }}</label>
                         <select name="category" id="cropCategorySelect" class="form-select" required>
                             {% for cat in categories %}
                             <option value="{{ cat }}">{{ cat }}</option>
@@ -312,8 +313,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Famille botanique</label>
-                        <input type="text" name="family" id="cropFamilyInput" class="form-input" placeholder="Ex: Solanacées">
+                        <label class="form-label" for="cropFamilyInput">Famille botanique</label>
+                        <input type="text" name="family" id="cropFamilyInput" class="form-input" placeholder="Ex: Solanacées" autocomplete="off">
                     </div>
                 </div>
                 <div id="plantLinkInfo" class="form-hint text-success mt-sm" style="display:none"></div>
@@ -393,7 +394,7 @@
             <form method="POST" action="{{ url_for('settings.cycles_save') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group" style="max-width: 300px">
-                    <label class="form-label">Nombre de cycles par an</label>
+                    <label class="form-label" for="cyclesSelect">Nombre de cycles par an</label>
                     <select name="cycles_per_year" class="form-select" id="cyclesSelect"
                         onchange="updateCyclePreview()">
                         <option value="1" {% if cycles_per_year=='1' %}selected{% endif %}>1 cycle par an</option>
@@ -444,8 +445,8 @@
                         {% if cat_crops %}
                         {% for crop in cat_crops %}
                         <div class="form-group">
-                            <label class="form-label">{{ crop.crop_name }} (%)</label>
-                            <input type="number" name="crop_{{ crop.id }}" class="form-input"
+                            <label class="form-label" for="dist-crop-{{ crop.id }}">{{ crop.crop_name }} (%)</label>
+                            <input type="number" name="crop_{{ crop.id }}" id="dist-crop-{{ crop.id }}" class="form-input"
                                 value="{{ distribution_defaults.get(cat, {}).get(crop.crop_name, 0)|int }}" min="0"
                                 max="100" step="1">
                         </div>
@@ -586,8 +587,8 @@
                 class="mt-md">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
-                    <label for="importFile">Fichier JSON</label>
-                    <input type="file" id="importFile" name="file" accept=".json" required class="form-control">
+                    <label class="form-label" for="importFile">Fichier JSON</label>
+                    <input type="file" id="importFile" name="file" accept=".json" required class="form-input">
                 </div>
                 <button type="submit" class="btn btn-primary">
                     <span class="btn-icon">📤</span> Importer
@@ -634,12 +635,12 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Fichier JSON</label>
-                            <input type="file" name="file" accept=".json" required class="form-input">
+                            <label class="form-label" for="plant-import-file">Fichier JSON</label>
+                            <input type="file" name="file" id="plant-import-file" accept=".json" required class="form-input">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Mode d'import</label>
-                            <select name="mode" class="form-select">
+                            <label class="form-label" for="plant-import-mode">Mode d'import</label>
+                            <select name="mode" id="plant-import-mode" class="form-select">
                                 <option value="merge">Fusionner (ajouter/mettre à jour)</option>
                                 <option value="replace">Remplacer tout (attention !)</option>
                             </select>
@@ -664,19 +665,19 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row form-row-3">
                     <div class="form-group">
-                        <label class="form-label">Nom scientifique *</label>
-                        <input type="text" name="scientific_name" class="form-input"
+                        <label class="form-label" for="add-plant-scientific">Nom scientifique *</label>
+                        <input type="text" name="scientific_name" id="add-plant-scientific" class="form-input"
                             placeholder="Ex: Solanum lycopersicum" required
                             onblur="checkPlantDuplicate(this)">
                         <span id="plant-dup-warning" class="form-hint text-danger" style="display:none"></span>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Famille botanique</label>
-                        <input type="text" name="family" class="form-input" placeholder="Ex: Solanacées">
+                        <label class="form-label" for="add-plant-family">Famille botanique</label>
+                        <input type="text" name="family" id="add-plant-family" class="form-input" placeholder="Ex: Solanacées" autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Catégorie par défaut</label>
-                        <select name="default_category" class="form-select">
+                        <label class="form-label" for="add-plant-category">Catégorie par défaut</label>
+                        <select name="default_category" id="add-plant-category" class="form-select">
                             <option value="">— Aucune —</option>
                             {% for cat in categories %}
                             <option value="{{ cat }}">{{ cat }}</option>
@@ -686,19 +687,19 @@
                 </div>
                 <div class="form-row form-row-3 mt-md">
                     <div class="form-group">
-                        <label class="form-label">Nom préféré (affiché par défaut)</label>
-                        <input type="text" name="preferred_name" class="form-input"
+                        <label class="form-label" for="add-plant-preferred">Nom préféré (affiché par défaut)</label>
+                        <input type="text" name="preferred_name" id="add-plant-preferred" class="form-input"
                             placeholder="Ex: Tomate">
                         <span class="form-hint">Le premier nom dans la liste des noms communs</span>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Autres noms communs (séparés par des virgules)</label>
-                        <input type="text" name="common_names" class="form-input"
+                        <label class="form-label" for="add-plant-common">Autres noms communs (séparés par des virgules)</label>
+                        <input type="text" name="common_names" id="add-plant-common" class="form-input"
                             placeholder="Ex: Pomme d'amour, Pomme d'or">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Synonymes (séparés par des virgules)</label>
-                        <input type="text" name="synonyms" class="form-input"
+                        <label class="form-label" for="add-plant-synonyms">Synonymes (séparés par des virgules)</label>
+                        <input type="text" name="synonyms" id="add-plant-synonyms" class="form-input"
                             placeholder="Ex: Lycopersicon esculentum">
                     </div>
                 </div>
@@ -716,6 +717,7 @@
         <div class="card-header d-flex align-center justify-between">
             <h2 class="card-title">📋 Liste des plantes</h2>
             <div class="form-group mb-0" style="width: 300px">
+                <label class="sr-only" for="plantSearchInput">Rechercher une plante</label>
                 <input type="text" id="plantSearchInput" class="form-input"
                     placeholder="Rechercher une plante..." oninput="filterPlantsList()">
             </div>
@@ -1099,8 +1101,10 @@
                 var isPreferred = cn.is_preferred ? ' checked' : '';
                 var preferredClass = cn.is_preferred ? ' preferred-name' : '';
                 commonNamesHtml += '<div class="d-flex gap-sm align-center mb-sm' + preferredClass + '" data-cn-id="' + cn.id + '">' +
-                    '<input type="text" class="form-input form-input-sm" value="' + cn.name + '" style="flex:1">' +
-                    '<select class="form-select form-select-sm" style="width:80px">' +
+                    '<label class="sr-only" for="cn-name-' + cn.id + '">Nom commun</label>' +
+                    '<input type="text" id="cn-name-' + cn.id + '" class="form-input form-input-sm" value="' + cn.name + '" style="flex:1">' +
+                    '<label class="sr-only" for="cn-lang-' + cn.id + '">Langue</label>' +
+                    '<select id="cn-lang-' + cn.id + '" class="form-select form-select-sm" style="width:80px">' +
                     '<option value="fr"' + (cn.lang === 'fr' ? ' selected' : '') + '>FR</option>' +
                     '<option value="en"' + (cn.lang === 'en' ? ' selected' : '') + '>EN</option>' +
                     '<option value="local"' + (cn.lang === 'local' ? ' selected' : '') + '>Local</option>' +
@@ -1115,7 +1119,8 @@
         if (plant.synonyms && plant.synonyms.length > 0) {
             plant.synonyms.forEach(function(syn) {
                 synonymsHtml += '<div class="d-flex gap-sm align-center mb-sm" data-syn-id="' + syn.id + '">' +
-                    '<input type="text" class="form-input form-input-sm" value="' + syn.synonym + '" style="flex:1">' +
+                    '<label class="sr-only" for="syn-name-' + syn.id + '">Synonyme</label>' +
+                    '<input type="text" id="syn-name-' + syn.id + '" class="form-input form-input-sm" value="' + syn.synonym + '" style="flex:1">' +
                     '<button type="button" class="btn btn-sm btn-danger" onclick="deleteSynonym(' + syn.id + ', this)">🗑️</button>' +
                     '</div>';
             });
@@ -1124,24 +1129,26 @@
         body.innerHTML = '<form id="editPlantForm" onsubmit="submitPlantEdit(event, ' + plant.id + ')">' +
             '<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">' +
             '<div class="form-group">' +
-            '<label class="form-label">Nom scientifique</label>' +
-            '<input type="text" name="scientific_name" class="form-input" value="' + plant.scientific_name + '" required>' +
+            '<label class="form-label" for="edit-plant-scientific">Nom scientifique</label>' +
+            '<input type="text" name="scientific_name" id="edit-plant-scientific" class="form-input" value="' + plant.scientific_name + '" required>' +
             '</div>' +
             '<div class="form-row form-row-2 mt-md">' +
             '<div class="form-group">' +
-            '<label class="form-label">Famille botanique</label>' +
-            '<input type="text" name="family" class="form-input" value="' + (plant.family || '') + '">' +
+            '<label class="form-label" for="edit-plant-family">Famille botanique</label>' +
+            '<input type="text" name="family" id="edit-plant-family" class="form-input" value="' + (plant.family || '') + '" autocomplete="off">' +
             '</div>' +
             '<div class="form-group">' +
-            '<label class="form-label">Catégorie par défaut</label>' +
-            '<select name="default_category" class="form-select">' + categoryOptions + '</select>' +
+            '<label class="form-label" for="edit-plant-category">Catégorie par défaut</label>' +
+            '<select name="default_category" id="edit-plant-category" class="form-select">' + categoryOptions + '</select>' +
             '</div>' +
             '</div>' +
             '<div class="mt-lg">' +
             '<h4>Noms communs</h4>' +
             '<div id="commonNamesList">' + commonNamesHtml + '</div>' +
             '<div class="d-flex gap-sm mt-sm">' +
+            '<label class="sr-only" for="newCommonName">Nouveau nom commun</label>' +
             '<input type="text" id="newCommonName" class="form-input form-input-sm" placeholder="Nouveau nom commun" style="flex:1">' +
+            '<label class="sr-only" for="newCommonNameLang">Langue</label>' +
             '<select id="newCommonNameLang" class="form-select form-select-sm" style="width:80px">' +
             '<option value="fr">FR</option><option value="en">EN</option><option value="local">Local</option>' +
             '</select>' +
@@ -1152,6 +1159,7 @@
             '<h4>Synonymes</h4>' +
             '<div id="synonymsList">' + synonymsHtml + '</div>' +
             '<div class="d-flex gap-sm mt-sm">' +
+            '<label class="sr-only" for="newSynonym">Nouveau synonyme</label>' +
             '<input type="text" id="newSynonym" class="form-input form-input-sm" placeholder="Nouveau synonyme" style="flex:1">' +
             '<button type="button" class="btn btn-sm btn-secondary" onclick="addSynonym(' + plant.id + ')">➕</button>' +
             '</div>' +
