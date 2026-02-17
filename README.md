@@ -227,6 +227,10 @@ For those needs, we recommend **[QROP](https://gitlab.com/mxhfs/qrop)** (free, o
 
 All user-facing text is in **French**. UI strings are centralized in `i18n/fr.json`.
 
+## Author
+
+**BIAOU Samadori S. Honoré**
+
 ## License
 
 This project is provided as-is for personal and educational use.
