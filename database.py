@@ -627,23 +627,6 @@ def delete_crop(crop_id):
         conn.close()
 
 
-def update_crop_category(crop_id, new_category):
-    """Reassign a crop to a different category."""
-    conn = get_db()
-    try:
-        conn.execute(
-            "UPDATE crops SET category = ? WHERE id = ?",
-            (new_category, crop_id)
-        )
-        conn.commit()
-        return True
-    except Exception:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
-
-
 # ========================================
 # Rotation Sequence
 # ========================================

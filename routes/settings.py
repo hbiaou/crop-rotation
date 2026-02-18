@@ -24,7 +24,7 @@ from database import (
     get_gardens, get_garden, get_sub_beds, get_crops, get_setting,
     get_rotation_sequence, get_garden_stats, get_categories, get_cycles,
     create_garden, update_garden, delete_garden, toggle_sub_bed_reserve,
-    create_crop, delete_crop, update_crop_category,
+    create_crop, delete_crop,
     save_rotation_sequence, update_setting, reset_garden_history,
     import_garden_cycle_data
 )
@@ -341,25 +341,6 @@ def crop_delete():
         flash("Culture supprimée avec succès.", 'success')
     else:
         flash(error or "Erreur lors de la suppression.", 'error')
-
-    return redirect(url_for('settings.index', tab='cultures'))
-
-
-@settings_bp.route('/crop/category', methods=['POST'])
-def crop_category():
-    """Change a crop's category."""
-    crop_id = request.form.get('crop_id', type=int)
-    new_category = request.form.get('category', '').strip()
-
-    if not crop_id or not new_category:
-        flash("Veuillez spécifier la culture et la catégorie.", 'error')
-        return redirect(url_for('settings.index', tab='cultures'))
-
-    result = update_crop_category(crop_id, new_category)
-    if result:
-        flash("Catégorie mise à jour avec succès.", 'success')
-    else:
-        flash("Erreur lors de la mise à jour de la catégorie.", 'error')
 
     return redirect(url_for('settings.index', tab='cultures'))
 
