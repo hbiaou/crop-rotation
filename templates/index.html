@@ -117,7 +117,7 @@
                 </button>
             </form>
 
-            {% if has_cycles and cycle_state and cycle_state.has_plans and not cycle_state.has_distribution %}
+            {% if has_cycles and cycle_state and cycle_state.has_plans and not cycle_state.has_distribution and not cycle_state.has_crop_assignments %}
             <a href="{{ url_for('distribution.distribution_page', garden_id=selected_garden_id, cycle=selected_cycle) }}"
                 class="btn btn-primary btn-lg">
                 <span class="btn-icon">📊</span>
