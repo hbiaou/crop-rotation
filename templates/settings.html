@@ -764,11 +764,19 @@
                             <td>
                                 <div class="d-flex gap-sm">
                                     {% if plant.default_category %}
+                                    {% if plant.id in crops_plant_ids %}
+                                    <button type="button" class="btn btn-sm btn-secondary"
+                                        disabled
+                                        title="Déjà ajouté aux cultures">
+                                        ✓
+                                    </button>
+                                    {% else %}
                                     <button type="button" class="btn btn-sm btn-accent"
                                         onclick="addPlantToCrops({{ plant.id }})"
                                         title="Ajouter aux cultures">
                                         ➕
                                     </button>
+                                    {% endif %}
                                     {% endif %}
                                     <button type="button" class="btn btn-sm btn-secondary"
                                         onclick="editPlant({{ plant.id }})">

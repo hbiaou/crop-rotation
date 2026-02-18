@@ -81,6 +81,9 @@ def index():
         plants = []
         plant_count = 0
 
+    # Build set of plant_ids already linked to crops (for disabling "Add to crops" button)
+    crops_plant_ids = {c['plant_id'] for c in crops if c['plant_id'] is not None}
+
     return render_template('settings.html',
         gardens=gardens,
         garden_data=garden_data,
@@ -95,6 +98,7 @@ def index():
         plant_count=plant_count,
         plant_db_healthy=plant_db_healthy,
         plant_db_message=plant_db_message,
+        crops_plant_ids=crops_plant_ids,
     )
 
 
