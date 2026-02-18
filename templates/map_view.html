@@ -136,19 +136,36 @@
         </table>
     </div>
 
-    {# ── Reserve Beds ── #}
-    {% if map_data['reserve_beds'] %}
-    <div class="reserve-section">
-        <h3 class="reserve-title">🌿 Sous-Planches de réserve</h3>
-        <div class="reserve-beds">
-            {% for rb in map_data['reserve_beds'] %}
-            <div class="reserve-bed-chip">
-                P{{ rb['bed_number'] }}-S{{ rb['sub_bed_position'] }}
+    {# ── Map Statistics ── #}
+    {% set cat_icons = {'Feuille': '🌿', 'Graine': '🌻', 'Racine': '🫚', 'Fruit': '🍎', 'Couverture': '🪻'} %}
+    <div class="map-stats-section">
+        <h3 class="map-stats-title">Distribution des sous-planches</h3>
+        {# Crop counts by category #}
+        {% for cat, crops in map_data['crop_stats'].items() %}
+        {% if crops %}
+        <div class="map-stats-row">
+            <span class="map-stats-label cat-label-{{ cat|lower }}">{{ cat_icons[cat] }} <strong>{{ cat }}</strong> :</span>
+            <div class="map-stats-crops">
+                {% for crop_name, count in crops.items() %}
+                <span class="map-stats-crop">{{ crop_name }} <strong>{{ count }}</strong></span>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
+        {% endif %}
+        {% endfor %}
+
+        {# Reserve sub-beds (last) #}
+        {% if map_data['reserve_beds'] %}
+        <div class="map-stats-row reserve-row">
+            <span class="map-stats-label">🪧 <strong>Sous-planches de réserve</strong> :</span>
+            <div class="map-stats-chips">
+                {% for rb in map_data['reserve_beds'] %}
+                <span class="map-stats-chip">P{{ rb['bed_number'] }}-S{{ rb['sub_bed_position'] }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 {# ── Override Modal ── #}

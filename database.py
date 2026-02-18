@@ -1048,10 +1048,32 @@ def get_map_data(garden_id, cycle):
             (garden_id,)
         ).fetchall()
 
+        # Compute crop statistics by category
+        # Uses actual values if present, otherwise planned values
+        crop_stats = {}
+        category_order = ['Feuille', 'Graine', 'Racine', 'Fruit', 'Couverture']
+        for cat in category_order:
+            crop_stats[cat] = {}
+
+        for bed in sorted_beds:
+            for sb in bed['sub_beds']:
+                cat = sb['actual_category'] or sb['planned_category']
+                crop = sb['actual_crop_name'] or sb['planned_crop_name']
+                if cat and cat in crop_stats:
+                    if crop:
+                        crop_stats[cat][crop] = crop_stats[cat].get(crop, 0) + 1
+
+        # Sort crops by count (descending) within each category
+        for cat in crop_stats:
+            crop_stats[cat] = dict(
+                sorted(crop_stats[cat].items(), key=lambda x: (-x[1], x[0]))
+            )
+
         return {
             'garden': garden,
             'beds': sorted_beds,
             'reserve_beds': [dict(r) for r in reserve],
+            'crop_stats': crop_stats,
         }
     finally:
         conn.close()

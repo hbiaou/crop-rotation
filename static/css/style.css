@@ -2394,6 +2394,102 @@ tbody tr:hover {
 }
 
 
+/* ── Map Statistics Section ── */
+
+.map-stats-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.map-stats-title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--spacing-xs) 0;
+}
+
+.map-stats-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+}
+
+.map-stats-row.reserve-row {
+    padding-top: var(--spacing-sm);
+    border-top: 1px dashed var(--color-border);
+    margin-top: var(--spacing-xs);
+}
+
+.map-stats-label {
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    min-width: 180px;
+}
+
+/* Category-colored labels */
+.cat-label-feuille { color: var(--color-feuille-dark); }
+.cat-label-graine { color: var(--color-graine-dark); }
+.cat-label-racine { color: var(--color-racine-dark); }
+.cat-label-fruit { color: var(--color-fruit-dark); }
+.cat-label-couverture { color: var(--color-couverture-dark); }
+
+.map-stats-chips,
+.map-stats-crops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    align-items: baseline;
+}
+
+.map-stats-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--color-reserve);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-reserve-dark);
+}
+
+.map-stats-crop {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.map-stats-crop strong {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.map-stats-crop:not(:last-child)::after {
+    content: ",";
+}
+
+@media (max-width: 768px) {
+    .map-stats-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .map-stats-label {
+        min-width: auto;
+    }
+}
+
+
 /* ── Override Modal ── */
 
 .modal-overlay {
