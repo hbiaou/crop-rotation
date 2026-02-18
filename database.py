@@ -343,8 +343,11 @@ def get_cycles(garden_id=None):
 def get_crops(category=None):
     """Retrieve crops, optionally filtered by category.
 
-    For crops linked to a plant (plant_id is set), the display name
-    will use the plant's current preferred name from the plant database.
+    For crops linked to a plant (plant_id is set), enriches the crop with:
+    - crop_name: the plant's current preferred name
+    - scientific_name: the plant's scientific name
+    - family: the plant's family (updated from plant db)
+    - other_common_names: list of other common names
     """
     conn = get_db()
     if category:
@@ -356,19 +359,32 @@ def get_crops(category=None):
         rows = conn.execute("SELECT * FROM crops ORDER BY category, crop_name").fetchall()
     conn.close()
 
-    # Convert to list of dicts and enrich with preferred names from plant database
+    # Convert to list of dicts and enrich with plant database info
     crops = []
     for row in rows:
         crop = dict(row)
-        # If linked to a plant, try to get the current preferred name
+        # If linked to a plant, get full plant info
         if crop.get('plant_id'):
             try:
-                from plant_database import get_preferred_name
-                preferred = get_preferred_name(crop['plant_id'])
-                if preferred:
-                    crop['crop_name'] = preferred
+                from plant_database import get_plant
+                plant = get_plant(crop['plant_id'])
+                if plant:
+                    # Use preferred name as crop name
+                    if plant.get('preferred_name'):
+                        crop['crop_name'] = plant['preferred_name']
+                    # Add scientific name
+                    crop['scientific_name'] = plant.get('scientific_name', '')
+                    # Update family from plant db
+                    if plant.get('family'):
+                        crop['family'] = plant['family']
+                    # Get other common names (excluding the preferred one)
+                    other_names = []
+                    for cn in plant.get('common_names', []):
+                        if not cn.get('is_preferred') and cn.get('name'):
+                            other_names.append(cn['name'])
+                    crop['other_common_names'] = other_names
             except Exception:
-                pass  # Keep original crop_name if plant db unavailable
+                pass  # Keep original crop data if plant db unavailable
         crops.append(crop)
 
     return crops

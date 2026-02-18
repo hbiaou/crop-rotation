@@ -248,25 +248,20 @@
             <div class="crops-list">
                 {% for crop in cat_crops %}
                 <div class="crop-item">
-                    <div class="d-flex flex-col">
+                    <div class="d-flex flex-col" style="flex: 1;">
                         <span class="crop-name">{{ crop.crop_name }}</span>
-                        {% if crop.family %}
-                        <span class="text-muted text-xs">({{ crop.family }})</span>
+                        <div class="text-muted text-xs">
+                            {% if crop.scientific_name %}
+                            <em>{{ crop.scientific_name }}</em>
+                            {% if crop.family %} · {% endif %}
+                            {% endif %}
+                            {% if crop.family %}{{ crop.family }}{% endif %}
+                        </div>
+                        {% if crop.other_common_names %}
+                        <span class="text-muted text-xs">Autres noms : {{ crop.other_common_names|join(', ') }}</span>
                         {% endif %}
                     </div>
-                    <div class="crop-actions d-flex gap-sm">
-                        <!-- Category change -->
-                        <form method="POST" action="{{ url_for('settings.crop_category') }}"
-                            class="d-flex gap-sm align-center">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="crop_id" value="{{ crop.id }}">
-                            <label class="sr-only" for="category-select-{{ crop.id }}">Catégorie</label>
-                            <select name="category" id="category-select-{{ crop.id }}" class="form-select form-select-sm" onchange="this.form.submit()">
-                                {% for c in categories %}
-                                <option value="{{ c }}" {% if c==crop.category %}selected{% endif %}>{{ c }}</option>
-                                {% endfor %}
-                            </select>
-                        </form>
+                    <div class="crop-actions">
                         <!-- Delete -->
                         <form method="POST" action="{{ url_for('settings.crop_delete') }}" style="display:inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
