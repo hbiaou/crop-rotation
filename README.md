@@ -2,7 +2,7 @@
 
 A web application for planning and managing crop rotation in market gardens. Built for small-scale farmers and garden managers who need to track multi-year rotation cycles, visualize planting plans on interactive maps, and export data for field use.
 
-> **Note**: This application was built for my personal use as a farmer in Benin, but it is available for anyone to use and adapt for their own needs. I am planning to add more features in the future depending on my needs.
+> **Note**: This application was built for my personal use as a farmer in Benin, but it is available for anyone to use and adapt for their own needs. I am planning to add more features in the future depending on my needs. See the **[Roadmap](docs/ROADMAP.md)** for planned improvements.
 
 ## Features
 
