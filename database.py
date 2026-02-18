@@ -925,12 +925,38 @@ def get_map_data(garden_id, cycle):
         garden: garden row
         beds: list of {bed_number, sub_beds: [sub_bed_data]}
         reserve_beds: list of reserve sub-bed rows
+
+    Crop names are enriched with preferred names from the plant database
+    based on the configured language setting.
     """
     conn = get_db()
     try:
         garden = conn.execute("SELECT * FROM gardens WHERE id = ?", (garden_id,)).fetchone()
         if not garden:
             return None
+
+        # Get language setting for preferred names
+        lang_row = conn.execute("SELECT value FROM settings WHERE key = 'language'").fetchone()
+        lang = lang_row['value'] if lang_row else 'fr'
+
+        # Build crop_id -> preferred_name lookup
+        crop_name_lookup = {}
+        try:
+            from plant_database import get_preferred_name
+            crops_rows = conn.execute("SELECT id, plant_id, crop_name FROM crops").fetchall()
+            for crop_row in crops_rows:
+                crop_id = crop_row['id']
+                plant_id = crop_row['plant_id']
+                if plant_id:
+                    preferred = get_preferred_name(plant_id, lang=lang)
+                    if preferred:
+                        crop_name_lookup[crop_id] = preferred
+                    else:
+                        crop_name_lookup[crop_id] = crop_row['crop_name']
+                else:
+                    crop_name_lookup[crop_id] = crop_row['crop_name']
+        except Exception:
+            pass  # Fallback to view crop names if plant db unavailable
 
         # Get cycle plans via the view (active beds only)
         plans = conn.execute(
@@ -946,15 +972,25 @@ def get_map_data(garden_id, cycle):
             bn = row['bed_number']
             if bn not in beds:
                 beds[bn] = {'bed_number': bn, 'sub_beds': []}
+
+            # Use preferred names from lookup if available
+            planned_crop_name = row['planned_crop_name']
+            actual_crop_name = row['actual_crop_name']
+            if crop_name_lookup:
+                if row['planned_crop_id'] and row['planned_crop_id'] in crop_name_lookup:
+                    planned_crop_name = crop_name_lookup[row['planned_crop_id']]
+                if row['actual_crop_id'] and row['actual_crop_id'] in crop_name_lookup:
+                    actual_crop_name = crop_name_lookup[row['actual_crop_id']]
+
             beds[bn]['sub_beds'].append({
                 'sub_bed_id': row['sub_bed_id'],
                 'cycle_plan_id': row['id'],
                 'position': row['sub_bed_position'],
                 'planned_category': row['planned_category'],
-                'planned_crop_name': row['planned_crop_name'],
+                'planned_crop_name': planned_crop_name,
                 'planned_crop_id': row['planned_crop_id'],
                 'actual_category': row['actual_category'],
-                'actual_crop_name': row['actual_crop_name'],
+                'actual_crop_name': actual_crop_name,
                 'actual_crop_id': row['actual_crop_id'],
                 'is_override': bool(row['is_override']),
                 'notes': row['notes'],
