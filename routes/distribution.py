@@ -8,7 +8,6 @@ Provides:
 See FEATURES_SPEC.md sections F3, F4.
 """
 
-import os
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
@@ -21,45 +20,51 @@ from rotation_engine import assign_crops
 
 distribution_bp = Blueprint('distribution', __name__, url_prefix='/distribution')
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def _load_default_distribution(garden_id):
+    """Load default distribution percentages for a specific garden.
 
-def _load_default_distribution(garden_code):
-    """Load default distribution percentages.
-    
     Priority:
-    1. Database `settings` table (key: `distribution_defaults`)
-    2. defaults.json file
+    1. Database settings table (key: distribution_defaults_<garden_id>)
+    2. Equal split across all enabled crops per category
+
+    Args:
+        garden_id: The garden ID to load defaults for.
+
+    Returns:
+        dict: {category: {crop_name: percentage}}
     """
-    # 1. Try DB
-    db_defaults_json = get_setting('distribution_defaults')
+    from database import get_categories
+
+    # 1. Try garden-specific DB defaults
+    db_defaults_json = get_setting(f'distribution_defaults_{garden_id}')
     if db_defaults_json:
         try:
-            return json.loads(db_defaults_json)
+            defaults = json.loads(db_defaults_json)
+            if defaults:  # Non-empty
+                return defaults
         except json.JSONDecodeError:
             pass
 
-    # 2. Try file
-    defaults_path = os.path.join(BASE_DIR, 'config', 'defaults.json')
-    try:
-        with open(defaults_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    except Exception:
-        return {}
+    # 2. Fallback: equal split across enabled crops per category
+    all_crops = get_crops()
+    categories = get_categories()
 
-    dist_defaults = data.get('distribution_defaults', {})
+    defaults = {}
+    for cat in categories:
+        cat_crops = [c for c in all_crops if c['category'] == cat]
+        if not cat_crops:
+            continue
+        # Equal percentage for each crop, rounded to nearest integer
+        n = len(cat_crops)
+        base_pct = 100 // n
+        remainder = 100 % n
+        cat_dist = {}
+        for i, crop in enumerate(cat_crops):
+            cat_dist[crop['crop_name']] = base_pct + (1 if i < remainder else 0)
+        defaults[cat] = cat_dist
 
-    # Try exact code, then uppercase
-    if garden_code in dist_defaults:
-        return dist_defaults[garden_code]
-    if garden_code.upper() in dist_defaults:
-        return dist_defaults[garden_code.upper()]
-
-    # Fallback to first available
-    if dist_defaults:
-        return next(iter(dist_defaults.values()))
-
-    return {}
+    return defaults
 
 
 @distribution_bp.route('/<int:garden_id>/<cycle>')
@@ -101,24 +106,10 @@ def distribution_page(garden_id, cycle):
     # 1. Check current cycle profiles
     existing_profiles = get_distribution_profiles(garden_id, cycle)
 
-    # 2. If none, try defaults (DB or JSON)
+    # 2. If none, try defaults (DB or equal-split fallback)
     defaults = {}
     if not existing_profiles:
-        defaults = _load_default_distribution(garden['garden_code'])
-    
-    # 3. If no defaults, try previous cycle
-    if not existing_profiles and not defaults:
-        conn = get_db()
-        prev_cycle_row = conn.execute(
-            """SELECT DISTINCT cycle FROM cycle_plans
-               WHERE garden_id = ? AND cycle < ?
-               ORDER BY cycle DESC LIMIT 1""",
-            (garden_id, cycle)
-        ).fetchone()
-        conn.close()
-
-        if prev_cycle_row:
-            existing_profiles = get_distribution_profiles(garden_id, prev_cycle_row['cycle'])
+        defaults = _load_default_distribution(garden_id)
 
     # 4. Build profile map
     if not existing_profiles:

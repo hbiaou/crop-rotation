@@ -31,22 +31,6 @@
     {"crop_name": "Tithonia", "category": "Couverture"},
     {"crop_name": "Mucuna", "category": "Couverture"}
   ],
-  "distribution_defaults": {
-    "G1": {
-      "Feuille": {"Choux": 27, "Laitue": 27, "Crincrin": 23, "Amaranthe": 23},
-      "Graine": {"Maïs": 23, "Lentille": 18, "Haricot-Vert": 23, "Tournesol": 18, "Sésame": 18},
-      "Racine": {"Carotte": 23, "Oignon": 27, "Patate": 27, "Ail": 23},
-      "Fruit": {"Gombo": 23, "Piment": 23, "Tomate": 27, "Concombre": 14, "Pastèque": 9, "Fraise": 4},
-      "Couverture": {"Crotalaria": 25, "Aeschynomene": 25, "Tithonia": 25, "Mucuna": 25}
-    },
-    "G2": {
-      "Feuille": {"Choux": 22, "Laitue": 22, "Crincrin": 22, "Amaranthe": 34},
-      "Graine": {"Maïs": 22, "Lentille": 22, "Haricot-Vert": 22, "Tournesol": 22, "Sésame": 12},
-      "Racine": {"Carotte": 22, "Oignon": 34, "Patate": 34, "Ail": 10},
-      "Fruit": {"Gombo": 22, "Piment": 22, "Tomate": 34, "Concombre": 11, "Pastèque": 11, "Fraise": 0},
-      "Couverture": {"Crotalaria": 20, "Aeschynomene": 20, "Tithonia": 30, "Mucuna": 30}
-    }
-  },
   "settings": {
     "cycles_per_year": 2
   },

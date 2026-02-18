@@ -70,18 +70,6 @@ def compute_current_cycle():
         return f"{year}A"
 
 
-def _load_distribution_defaults():
-    """Load default distribution percentages from config/defaults.json."""
-    defaults_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'config', 'defaults.json'
-    )
-    try:
-        with open(defaults_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data.get('distribution_defaults', {})
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
 
 
 def _compute_auto_distribution(garden_id):
@@ -118,10 +106,9 @@ def _compute_auto_distribution(garden_id):
             crops_by_cat[cat] = []
         crops_by_cat[cat].append({'id': crop['id'], 'crop_name': crop['crop_name']})
 
-    # Load distribution defaults
-    dist_defaults = _load_distribution_defaults()
-    garden_code = garden['garden_code']
-    garden_defaults = dist_defaults.get(garden_code, {})
+    # Load distribution defaults (garden-specific or equal-split fallback)
+    from routes.distribution import _load_default_distribution
+    garden_defaults = _load_default_distribution(garden_id)
 
     total_sub_beds = len(active_beds)
     num_categories = len(categories)
@@ -451,6 +438,45 @@ def api_auto_distribute(garden_id):
 # Cycle Generation
 # ========================================
 
+def _auto_apply_distribution(garden_id, cycle):
+    """Auto-apply default distribution percentages and assign crops for a new cycle.
+
+    Steps:
+    1. Load garden-specific defaults (or equal-split fallback)
+    2. Resolve crop names → crop IDs
+    3. Save as distribution_profiles for this garden+cycle
+    4. Run assign_crops() to fill planned_crop_id
+    """
+    from routes.distribution import _load_default_distribution
+    from database import save_distribution_profiles
+    from rotation_engine import assign_crops
+
+    # Load defaults for this specific garden
+    defaults = _load_default_distribution(garden_id)
+    if not defaults:
+        return
+
+    # Resolve crop names to IDs
+    all_crops = get_crops()
+    crop_name_to_id = {c['crop_name']: c['id'] for c in all_crops}
+
+    profiles = []  # list of (crop_id, percentage)
+    for category, crop_pcts in defaults.items():
+        for crop_name, pct in crop_pcts.items():
+            crop_id = crop_name_to_id.get(crop_name)
+            if crop_id and pct > 0:
+                profiles.append((crop_id, pct))
+
+    if not profiles:
+        return
+
+    # Save distribution profiles for this cycle
+    save_distribution_profiles(garden_id, cycle, profiles)
+
+    # Run smart crop assignment
+    assign_crops(garden_id, cycle)
+
+
 @cycle_bp.route('/generate/<int:garden_id>', methods=['POST'])
 def generate_cycle(garden_id):
     """Generate the next cycle for a garden.
@@ -458,7 +484,8 @@ def generate_cycle(garden_id):
     Steps:
     1. Save snapshot of current cycle's actuals
     2. Generate next cycle (category rotation)
-    3. Redirect to distribution page for the new cycle
+    3. Auto-apply default distribution and assign crops
+    4. Redirect to distribution page for the new cycle
     """
     from utils.snapshots import save_snapshot
     from rotation_engine import generate_next_cycle
@@ -486,9 +513,12 @@ def generate_cycle(garden_id):
         flash(f"Erreur lors de la génération : {error}", "error")
         return redirect(url_for('main.index', garden_id=garden_id))
 
+    # Step 3: Auto-apply default distribution and assign crops
+    _auto_apply_distribution(garden_id, new_cycle)
+
     flash(f"Cycle {new_cycle} généré avec succès ! Ajustez la répartition ci-dessous.", "success")
 
-    # Step 3: Redirect to distribution page
+    # Step 4: Redirect to distribution page
     return redirect(url_for('distribution.distribution_page',
                             garden_id=garden_id, cycle=new_cycle, new=1))
 

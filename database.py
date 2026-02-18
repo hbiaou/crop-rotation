@@ -151,6 +151,7 @@ def init_db():
     # Run migrations
     _migrate_add_family_column()
     _migrate_add_plant_id_column()
+    _migrate_distribution_defaults_per_garden()
 
 
 def _migrate_add_family_column():
@@ -183,6 +184,60 @@ def _migrate_add_plant_id_column():
             conn.commit()
     except Exception as e:
         print(f"Warning: Migration _migrate_add_plant_id_column failed: {e}")
+    finally:
+        conn.close()
+
+
+def _migrate_distribution_defaults_per_garden():
+    """Migrate global distribution_defaults to garden-specific keys.
+
+    Old format: settings key 'distribution_defaults' with global JSON
+    New format: settings key 'distribution_defaults_<garden_id>' per garden
+
+    This migration:
+    1. Reads the old global 'distribution_defaults' key
+    2. For each garden, creates 'distribution_defaults_<garden_id>' if not exists
+    3. Deletes the old global key
+    """
+    conn = get_db()
+    try:
+        # Check if old global key exists
+        old_row = conn.execute(
+            "SELECT value FROM settings WHERE key = 'distribution_defaults'"
+        ).fetchone()
+
+        if not old_row:
+            # No migration needed - old key doesn't exist
+            return
+
+        old_value = old_row['value']
+
+        # Get all gardens
+        gardens = conn.execute("SELECT id FROM gardens").fetchall()
+
+        for garden in gardens:
+            gid = garden['id']
+            new_key = f'distribution_defaults_{gid}'
+
+            # Check if garden-specific key already exists
+            existing = conn.execute(
+                "SELECT value FROM settings WHERE key = ?", (new_key,)
+            ).fetchone()
+
+            if not existing:
+                # Copy old defaults to this garden
+                conn.execute(
+                    "INSERT INTO settings (key, value) VALUES (?, ?)",
+                    (new_key, old_value)
+                )
+
+        # Remove old global key
+        conn.execute("DELETE FROM settings WHERE key = 'distribution_defaults'")
+        conn.commit()
+        print("Migration: distribution_defaults migrated to per-garden keys")
+    except Exception as e:
+        conn.rollback()
+        print(f"Warning: Migration _migrate_distribution_defaults_per_garden failed: {e}")
     finally:
         conn.close()
 

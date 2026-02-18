@@ -428,12 +428,25 @@
     <div class="card">
         <div class="card-header">
             <h2 class="card-title">📊 Répartition par défaut</h2>
-            <p class="text-muted">Définissez les pourcentages cibles par défaut pour chaque culture. Ces valeurs seront
-                utilisées lors de la génération de nouveaux cycles.</p>
+            <p class="text-muted">Définissez les pourcentages cibles par défaut pour chaque culture par jardin.
+                Ces valeurs seront utilisées lors de la génération de nouveaux cycles.</p>
         </div>
         <div class="card-body">
+            <!-- Garden selector tabs/buttons -->
+            <div class="garden-selector mb-lg">
+                {% for g in gardens %}
+                <button type="button" class="btn {% if g.id == selected_distribution_garden_id %}btn-primary{% else %}btn-outline{% endif %}"
+                        onclick="window.location.href='{{ url_for('settings.index', tab='distribution', dist_garden_id=g.id) }}'">
+                    {{ g.garden_code }} — {{ g.name }}
+                </button>
+                {% endfor %}
+            </div>
+
+            {% if selected_distribution_garden %}
             <form method="POST" action="{{ url_for('settings.distribution_save') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="garden_id" value="{{ selected_distribution_garden.id }}">
+
                 {% for cat in categories %}
                 <div class="category-section mb-lg">
                     <h3 class="cat-title mb-md"><span class="cat-badge cat-{{ cat|lower }}">{{ cat }}</span></h3>
@@ -462,6 +475,9 @@
                     </button>
                 </div>
             </form>
+            {% else %}
+            <p class="text-muted">Sélectionnez un jardin ci-dessus.</p>
+            {% endif %}
         </div>
     </div>
 </div>

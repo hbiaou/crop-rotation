@@ -45,11 +45,6 @@ def index():
     categories = get_categories()
     rotation = get_rotation_sequence()
     cycles_per_year = get_setting('cycles_per_year', '2')
-    distribution_defaults_json = get_setting('distribution_defaults', '{}')
-    try:
-        distribution_defaults = json.loads(distribution_defaults_json)
-    except Exception:
-        distribution_defaults = {}
     backups = list_backups()
 
     # Build garden stats with sub-beds for the reserve grid
@@ -84,6 +79,21 @@ def index():
     # Build set of plant_ids already linked to crops (for disabling "Add to crops" button)
     crops_plant_ids = {c['plant_id'] for c in crops if c['plant_id'] is not None}
 
+    # Distribution tab: garden-specific defaults
+    selected_dist_garden_id = request.args.get('dist_garden_id', type=int)
+    if not selected_dist_garden_id and gardens:
+        selected_dist_garden_id = gardens[0]['id']  # Default to first garden
+
+    selected_distribution_garden = None
+    distribution_defaults = {}
+    if selected_dist_garden_id:
+        selected_distribution_garden = get_garden(selected_dist_garden_id)
+        distribution_defaults_json = get_setting(f'distribution_defaults_{selected_dist_garden_id}', '{}')
+        try:
+            distribution_defaults = json.loads(distribution_defaults_json)
+        except Exception:
+            distribution_defaults = {}
+
     return render_template('settings.html',
         gardens=gardens,
         garden_data=garden_data,
@@ -93,6 +103,8 @@ def index():
         rotation=rotation,
         cycles_per_year=cycles_per_year,
         distribution_defaults=distribution_defaults,
+        selected_distribution_garden=selected_distribution_garden,
+        selected_distribution_garden_id=selected_dist_garden_id,
         backups=backups,
         plants=plants,
         plant_count=plant_count,
@@ -444,18 +456,23 @@ def backup_delete():
 
 @settings_bp.route('/distribution/save', methods=['POST'])
 def distribution_save():
-    """Save default distribution percentages."""
+    """Save default distribution percentages for a specific garden."""
+    garden_id = request.form.get('garden_id', type=int)
+    if not garden_id:
+        flash("Jardin non spécifié.", 'error')
+        return redirect(url_for('settings.index', tab='distribution'))
+
     crops = get_crops()
     categories = get_categories()
-    
+
     distribution = {}
-    
+
     # Process each category
     for cat in categories:
         cat_crops = [c for c in crops if c['category'] == cat]
         if not cat_crops:
             continue
-            
+
         cat_dist = {}
         # Iterate relevant crops
         for crop in cat_crops:
@@ -467,12 +484,12 @@ def distribution_save():
                 except ValueError:
                     val = 0.0
                 cat_dist[crop['crop_name']] = val
-            
+
         if cat_dist:
             distribution[cat] = cat_dist
 
-    # Save as JSON string
-    update_setting('distribution_defaults', json.dumps(distribution))
+    # Save with garden-specific key
+    update_setting(f'distribution_defaults_{garden_id}', json.dumps(distribution))
     flash("Répartition par défaut enregistrée.", 'success')
-    return redirect(url_for('settings.index', tab='distribution'))
+    return redirect(url_for('settings.index', tab='distribution', dist_garden_id=garden_id))
 
