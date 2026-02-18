@@ -1580,12 +1580,13 @@ def get_preferred_name(plant_id: int, lang: str = 'fr') -> Optional[str]:
 
 def set_preferred_name(common_name_id: int) -> Tuple[bool, Optional[str]]:
     """
-    Set a common name as the preferred name for its plant and language.
+    Toggle a common name as the preferred name for its plant.
 
-    Automatically clears is_preferred on other names in the same language.
+    If the name is already preferred, it will be demoted (is_preferred = 0).
+    If the name is not preferred, it becomes preferred and others are cleared.
 
     Args:
-        common_name_id: ID of the common name to set as preferred
+        common_name_id: ID of the common name to toggle as preferred
 
     Returns:
         Tuple of (success, error_message)
@@ -1594,26 +1595,31 @@ def set_preferred_name(common_name_id: int) -> Tuple[bool, Optional[str]]:
     cursor = conn.cursor()
 
     try:
-        # Get the common name details
+        # Get the common name details including current preferred status
         cn = cursor.execute(
-            "SELECT plant_id, lang FROM plant_common_names WHERE id = ?",
+            "SELECT plant_id, lang, is_preferred FROM plant_common_names WHERE id = ?",
             (common_name_id,)
         ).fetchone()
 
         if not cn:
             return False, "Nom commun introuvable."
 
-        # Clear is_preferred on other names in same language
-        cursor.execute(
-            "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ? AND lang = ?",
-            (cn['plant_id'], cn['lang'])
-        )
-
-        # Set this one as preferred
-        cursor.execute(
-            "UPDATE plant_common_names SET is_preferred = 1 WHERE id = ?",
-            (common_name_id,)
-        )
+        if cn['is_preferred']:
+            # Already preferred - demote it (toggle off)
+            cursor.execute(
+                "UPDATE plant_common_names SET is_preferred = 0 WHERE id = ?",
+                (common_name_id,)
+            )
+        else:
+            # Not preferred - promote it (clear others first)
+            cursor.execute(
+                "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ?",
+                (cn['plant_id'],)
+            )
+            cursor.execute(
+                "UPDATE plant_common_names SET is_preferred = 1 WHERE id = ?",
+                (common_name_id,)
+            )
 
         conn.commit()
         return True, None
