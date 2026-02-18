@@ -1611,10 +1611,10 @@ def set_preferred_name(common_name_id: int) -> Tuple[bool, Optional[str]]:
                 (common_name_id,)
             )
         else:
-            # Not preferred - promote it (clear others first)
+            # Not preferred - promote it (clear others in same language first)
             cursor.execute(
-                "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ?",
-                (cn['plant_id'],)
+                "UPDATE plant_common_names SET is_preferred = 0 WHERE plant_id = ? AND lang = ?",
+                (cn['plant_id'], cn['lang'])
             )
             cursor.execute(
                 "UPDATE plant_common_names SET is_preferred = 1 WHERE id = ?",
