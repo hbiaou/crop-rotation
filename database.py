@@ -373,6 +373,9 @@ def get_crops(category=None, lang=None):
     crops = []
     for row in rows:
         crop = dict(row)
+        # Initialize fields that may be enriched from plant database
+        crop.setdefault('scientific_name', '')
+        crop.setdefault('other_common_names', [])
         # If linked to a plant, get full plant info
         if crop.get('plant_id'):
             try:
