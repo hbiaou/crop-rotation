@@ -245,35 +245,38 @@
         </div>
         <div class="card-body">
             {% if cat_crops %}
-            <div class="crops-list">
-                {% for crop in cat_crops %}
-                <div class="crop-item">
-                    <div class="d-flex flex-col" style="flex: 1;">
-                        <span class="crop-name">{{ crop.crop_name }}</span>
-                        <div class="text-muted text-xs">
-                            {% if crop.scientific_name %}
-                            <em>{{ crop.scientific_name }}</em>
-                            {% if crop.family %} · {% endif %}
-                            {% endif %}
-                            {% if crop.family %}{{ crop.family }}{% endif %}
-                        </div>
-                        {% if crop.other_common_names %}
-                        <span class="text-muted text-xs">Autres noms : {{ crop.other_common_names|join(', ') }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="crop-actions">
-                        <!-- Delete -->
-                        <form method="POST" action="{{ url_for('settings.crop_delete') }}" style="display:inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="crop_id" value="{{ crop.id }}">
-                            <button type="submit" class="btn btn-sm btn-danger"
-                                data-confirm="{{ i18n.confirm.delete_crop }}">
-                                🗑️
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                {% endfor %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Nom scientifique</th>
+                            <th>Famille</th>
+                            <th>Autres noms</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for crop in cat_crops %}
+                        <tr>
+                            <td><strong>{{ crop.crop_name }}</strong></td>
+                            <td><em>{{ crop.scientific_name or '—' }}</em></td>
+                            <td>{{ crop.family or '—' }}</td>
+                            <td class="text-muted">{{ crop.other_common_names|join(', ') if crop.other_common_names else '—' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('settings.crop_delete') }}" style="display:inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="crop_id" value="{{ crop.id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="{{ i18n.confirm.delete_crop }}">
+                                        🗑️
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% else %}
             <p class="text-muted">Aucune culture dans cette catégorie.</p>
