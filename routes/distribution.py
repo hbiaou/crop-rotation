@@ -3,7 +3,9 @@ routes/distribution.py — Distribution adjustment routes.
 
 Provides:
 - GET /distribution/<garden_id>/<cycle> — View/edit crop distribution percentages
-- POST /distribution/<garden_id>/<cycle> — Save distribution as defaults for future cycles
+- POST /distribution/<garden_id>/<cycle> — Save distribution and reassign crops for current cycle
+
+Note: This does NOT modify garden defaults. To change defaults, use Settings → Répartition.
 
 See FEATURES_SPEC.md sections F3, F4.
 """
@@ -14,7 +16,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from database import (
     get_garden, get_crops, get_rotation_sequence,
     get_distribution_profiles, save_distribution_profiles, get_db,
-    get_setting, update_setting
+    get_setting
 )
 
 distribution_bp = Blueprint('distribution', __name__, url_prefix='/distribution')
@@ -170,7 +172,8 @@ def distribution_page(garden_id, cycle):
 def save_distribution(garden_id, cycle):
     """Save distribution percentages and reassign crops for the current cycle.
 
-    Also saves percentages as garden defaults for future cycle generation.
+    Note: This does NOT modify garden defaults. To change defaults for future
+    cycle generation, use Settings → Répartition par défaut.
     """
     from rotation_engine import assign_crops
 
@@ -203,33 +206,6 @@ def save_distribution(garden_id, cycle):
     if not ok:
         flash(f"Répartition enregistrée, mais erreur lors de l'affectation : {err}", "warning")
     else:
-        # Also save as garden defaults for future cycles
-        _save_as_garden_defaults(garden_id, profiles)
         flash("Répartition enregistrée et cultures réaffectées avec succès !", "success")
 
     return redirect(url_for('main.index', garden_id=garden_id, cycle=cycle))
-
-
-def _save_as_garden_defaults(garden_id, profiles):
-    """Save distribution profiles as garden defaults for future cycle generation.
-
-    Args:
-        garden_id: Garden ID
-        profiles: List of (crop_id, percentage) tuples
-    """
-    # Build crop_id -> crop info lookup
-    all_crops = get_crops()
-    crop_lookup = {c['id']: c for c in all_crops}
-
-    # Convert to {category: {crop_name: percentage}} format
-    defaults = {}
-    for crop_id, pct in profiles:
-        crop = crop_lookup.get(crop_id)
-        if crop:
-            cat = crop['category']
-            if cat not in defaults:
-                defaults[cat] = {}
-            defaults[cat][crop['crop_name']] = pct
-
-    # Save to settings
-    update_setting(f'distribution_defaults_{garden_id}', json.dumps(defaults))

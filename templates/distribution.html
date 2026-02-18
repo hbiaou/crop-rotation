@@ -9,9 +9,10 @@
 </div>
 
 <div class="alert alert-info mb-lg">
-    <strong>ℹ️ Information :</strong> L'enregistrement de la répartition réaffectera les cultures du cycle actuel ({{ cycle }})
-    selon les nouveaux pourcentages. Ces pourcentages seront également sauvegardés comme valeurs par défaut pour la génération
-    des prochains cycles.
+    <strong>ℹ️ Information :</strong> L'enregistrement réaffectera les cultures du cycle <strong>{{ cycle }}</strong> uniquement,
+    selon les nouveaux pourcentages. Les valeurs par défaut du jardin (utilisées pour la génération des prochains cycles)
+    ne seront <strong>pas modifiées</strong>. Pour changer les valeurs par défaut, utilisez
+    <a href="{{ url_for('settings.index', tab='distribution', dist_garden_id=garden.id) }}">Paramètres → Répartition</a>.
 </div>
 
 <form method="post" action="{{ url_for('distribution.save_distribution', garden_id=garden.id, cycle=cycle) }}"
