@@ -25,6 +25,7 @@
     "nav": {
         "home": "Accueil",
         "settings": "Paramètres",
+        "statistics": "Statistiques Globales",
         "export": "Exporter",
         "app_title": "Rotation des Cultures"
     },
@@ -35,7 +36,9 @@
         "map_title": "Carte des cultures",
         "distribution_title": "Répartition des cultures",
         "bootstrap_title": "Démarrage à zéro",
-        "print_title": "Impression de la carte"
+        "print_title": "Impression de la carte",
+        "statistics_title": "Statistiques Globales",
+        "statistics_subtitle": "Vue d'ensemble de tous les jardins"
     },
     "buttons": {
         "bootstrap": "Démarrage à zéro",
@@ -51,6 +54,7 @@
         "close": "Fermer",
         "export_excel": "Exporter en Excel",
         "print_map": "Imprimer la carte",
+        "print": "Imprimer",
         "backup_now": "Sauvegarder maintenant",
         "restore": "Restaurer",
         "confirm_distribution": "Confirmer la répartition",
@@ -172,5 +176,16 @@
         "override_success": "Remplacement enregistré avec succès.",
         "override_tooltip": "Planifié: {planned} / Réel: {actual}",
         "back_home": "Accueil"
+    },
+    "statistics": {
+        "summary_title": "Récapitulatif Global",
+        "gardens": "jardins",
+        "gardens_list": "Liste des jardins",
+        "total": "Total",
+        "no_gardens": "Aucun jardin configuré",
+        "crops_by_category": "Cultures par catégorie",
+        "crops_by_category_hint": "Répartition des cultures pour les cycles en cours de tous les jardins",
+        "no_crops": "Aucune culture",
+        "back": "Retour aux statistiques"
     }
 }

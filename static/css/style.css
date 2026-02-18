@@ -2810,3 +2810,208 @@ tbody tr:hover {
     color: var(--color-text-secondary);
     font-style: italic;
 }
+
+/* ========================================
+   Statistics Page
+   ======================================== */
+
+/* Table styles */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.data-table th,
+.data-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th {
+    background: var(--color-bg);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-bg);
+}
+
+.data-table tfoot .table-total {
+    background: var(--color-primary-light);
+    font-weight: 600;
+}
+
+.data-table tfoot .table-total td {
+    border-top: 2px solid var(--color-primary);
+}
+
+/* Card subtitle */
+.card-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-top: var(--spacing-xs);
+}
+
+/* Category stats grid */
+.category-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.category-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.category-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--color-text-inverse);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.category-header.feuille {
+    background: var(--color-feuille);
+}
+
+.category-header.graine {
+    background: var(--color-graine);
+}
+
+.category-header.racine {
+    background: var(--color-racine);
+}
+
+.category-header.fruit {
+    background: var(--color-fruit);
+}
+
+.category-header.couverture {
+    background: var(--color-couverture);
+}
+
+.category-count {
+    font-size: var(--font-size-sm);
+    opacity: 0.9;
+}
+
+.category-body {
+    padding: var(--spacing-md);
+    background: var(--color-surface);
+}
+
+.crop-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.crop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.crop-item:last-child {
+    border-bottom: none;
+}
+
+.crop-name {
+    color: var(--color-text);
+}
+
+.crop-count {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    padding: 2px var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+}
+
+.empty-category {
+    color: var(--color-text-muted);
+    font-style: italic;
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+.empty-state {
+    color: var(--color-text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: var(--spacing-lg);
+}
+
+/* Print-specific styles for statistics */
+.print-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.print-section-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.print-stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.print-table {
+    width: 100%;
+}
+
+.print-categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.print-category-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.print-category-header {
+    padding: var(--spacing-sm);
+    color: var(--color-text-inverse);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+}
+
+.print-category-body {
+    padding: var(--spacing-sm);
+}
+
+.print-crop-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: var(--font-size-sm);
+}
+
+.print-crop-list li {
+    padding: 2px 0;
+}

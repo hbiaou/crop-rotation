@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ i18n.pages.statistics_title }} — {{ i18n.nav.app_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ i18n.pages.statistics_title }}</h1>
+    <p class="page-subtitle">{{ i18n.pages.statistics_subtitle }}</p>
+</div>
+
+<!-- Action Buttons -->
+<div class="card actions-card">
+    <div class="card-body">
+        <div class="action-buttons">
+            <button onclick="window.print()" class="btn btn-secondary btn-lg">
+                <span class="btn-icon">🖨️</span>
+                {{ i18n.buttons.print }}
+            </button>
+            <a href="{{ url_for('statistics.export_excel') }}" class="btn btn-primary btn-lg">
+                <span class="btn-icon">📥</span>
+                {{ i18n.buttons.export_excel }}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Global Summary -->
+<div class="card stats-card">
+    <div class="card-header">
+        <h2 class="card-title">{{ i18n.statistics.summary_title }}</h2>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-value">{{ stats.total_gardens }}</span>
+                <span class="stat-label">{{ i18n.statistics.gardens }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ stats.total_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.beds }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ stats.total_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.sub_beds }}</span>
+            </div>
+            <div class="stat-item stat-active">
+                <span class="stat-value">{{ stats.active_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.active }}</span>
+            </div>
+            <div class="stat-item stat-reserve">
+                <span class="stat-value">{{ stats.reserve_sub_beds }}</span>
+                <span class="stat-label">{{ i18n.stats.reserve }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gardens List -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ i18n.statistics.gardens_list }}</h2>
+    </div>
+    <div class="card-body">
+        {% if stats.gardens %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ i18n.labels.garden_code }}</th>
+                        <th>{{ i18n.labels.garden_name }}</th>
+                        <th>{{ i18n.stats.beds }}</th>
+                        <th>{{ i18n.stats.sub_beds }}</th>
+                        <th>{{ i18n.stats.active }}</th>
+                        <th>{{ i18n.stats.reserve }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for garden in stats.gardens %}
+                    <tr>
+                        <td><strong>{{ garden.code }}</strong></td>
+                        <td>{{ garden.name }}</td>
+                        <td>{{ garden.beds }}</td>
+                        <td>{{ garden.total_sub_beds }}</td>
+                        <td>{{ garden.active_sub_beds }}</td>
+                        <td>{{ garden.reserve_sub_beds }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-total">
+                        <td colspan="2"><strong>{{ i18n.statistics.total }}</strong></td>
+                        <td><strong>{{ stats.total_beds }}</strong></td>
+                        <td><strong>{{ stats.total_sub_beds }}</strong></td>
+                        <td><strong>{{ stats.active_sub_beds }}</strong></td>
+                        <td><strong>{{ stats.reserve_sub_beds }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">{{ i18n.statistics.no_gardens }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Crops by Category -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ i18n.statistics.crops_by_category }}</h2>
+        <p class="card-subtitle">{{ i18n.statistics.crops_by_category_hint }}</p>
+    </div>
+    <div class="card-body">
+        <div class="category-stats-grid">
+            {% for category in categories %}
+            <div class="category-card category-{{ category | lower }}">
+                <div class="category-header {{ category | lower }}">
+                    <span class="category-name">{{ i18n.categories[category] }}</span>
+                    {% set total_count = stats.crops_by_category[category] | sum(attribute='count') %}
+                    <span class="category-count">{{ total_count }} {{ i18n.stats.sub_beds }}</span>
+                </div>
+                <div class="category-body">
+                    {% if stats.crops_by_category[category] %}
+                    <ul class="crop-list">
+                        {% for crop in stats.crops_by_category[category] %}
+                        <li class="crop-item">
+                            <span class="crop-name">{{ crop.crop_name }}</span>
+                            <span class="crop-count">{{ crop.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="empty-category">{{ i18n.statistics.no_crops }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

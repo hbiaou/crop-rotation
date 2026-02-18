@@ -21,6 +21,7 @@ from routes.distribution import distribution_bp
 from routes.settings import settings_bp
 from routes.export import export_bp
 from routes.plant_db import plant_db_bp
+from routes.statistics import statistics_bp
 
 
 def create_app(test_config=None):
@@ -58,6 +59,7 @@ def create_app(test_config=None):
     app.register_blueprint(settings_bp)
     app.register_blueprint(export_bp)
     app.register_blueprint(plant_db_bp)
+    app.register_blueprint(statistics_bp)
 
     # Load i18n strings
     i18n_path = os.path.join(base_dir, 'i18n', 'fr.json')

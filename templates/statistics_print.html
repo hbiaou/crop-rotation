@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques Globales — Impression</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+</head>
+
+<body>
+    <div class="print-page">
+        {# ── Print Header ── #}
+        <div class="print-header">
+            <h1 class="print-title">{{ i18n.pages.statistics_title }}</h1>
+            <p class="print-date">{{ i18n.glossary.print }}: {{ print_date }}</p>
+        </div>
+
+        {# ── Global Summary ── #}
+        <div class="print-section">
+            <h2 class="print-section-title">{{ i18n.statistics.summary_title }}</h2>
+            <div class="stats-grid print-stats-grid">
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.total_gardens }}</span>
+                    <span class="stat-label">{{ i18n.statistics.gardens }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.total_beds }}</span>
+                    <span class="stat-label">{{ i18n.stats.beds }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.total_sub_beds }}</span>
+                    <span class="stat-label">{{ i18n.stats.sub_beds }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.active_sub_beds }}</span>
+                    <span class="stat-label">{{ i18n.stats.active }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.reserve_sub_beds }}</span>
+                    <span class="stat-label">{{ i18n.stats.reserve }}</span>
+                </div>
+            </div>
+        </div>
+
+        {# ── Gardens List ── #}
+        <div class="print-section">
+            <h2 class="print-section-title">{{ i18n.statistics.gardens_list }}</h2>
+            <table class="data-table print-table">
+                <thead>
+                    <tr>
+                        <th>{{ i18n.labels.garden_code }}</th>
+                        <th>{{ i18n.labels.garden_name }}</th>
+                        <th>{{ i18n.stats.beds }}</th>
+                        <th>{{ i18n.stats.sub_beds }}</th>
+                        <th>{{ i18n.stats.active }}</th>
+                        <th>{{ i18n.stats.reserve }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for garden in stats.gardens %}
+                    <tr>
+                        <td><strong>{{ garden.code }}</strong></td>
+                        <td>{{ garden.name }}</td>
+                        <td>{{ garden.beds }}</td>
+                        <td>{{ garden.total_sub_beds }}</td>
+                        <td>{{ garden.active_sub_beds }}</td>
+                        <td>{{ garden.reserve_sub_beds }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-total">
+                        <td colspan="2"><strong>{{ i18n.statistics.total }}</strong></td>
+                        <td><strong>{{ stats.total_beds }}</strong></td>
+                        <td><strong>{{ stats.total_sub_beds }}</strong></td>
+                        <td><strong>{{ stats.active_sub_beds }}</strong></td>
+                        <td><strong>{{ stats.reserve_sub_beds }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        {# ── Crops by Category ── #}
+        <div class="print-section">
+            <h2 class="print-section-title">{{ i18n.statistics.crops_by_category }}</h2>
+            <div class="print-categories-grid">
+                {% for category in categories %}
+                <div class="print-category-card">
+                    <div class="print-category-header cat-{{ category | lower }}">
+                        <span class="category-name">{{ i18n.categories[category] }}</span>
+                        {% set total_count = stats.crops_by_category[category] | sum(attribute='count') %}
+                        <span class="category-count">({{ total_count }})</span>
+                    </div>
+                    <div class="print-category-body">
+                        {% if stats.crops_by_category[category] %}
+                        <ul class="print-crop-list">
+                            {% for crop in stats.crops_by_category[category] %}
+                            <li>{{ crop.crop_name }}: {{ crop.count }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="empty-category">{{ i18n.statistics.no_crops }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# ── Screen-only buttons ── #}
+        <div class="print-actions no-print" style="text-align: center; margin-top: 2rem;">
+            <button class="btn btn-primary" onclick="window.print()">{{ i18n.buttons.print }}</button>
+            <a href="{{ url_for('statistics.index') }}" class="btn btn-outline">{{ i18n.statistics.back }}</a>
+        </div>
+    </div>
+</body>
+
+</html>
