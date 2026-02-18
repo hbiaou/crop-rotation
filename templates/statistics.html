@@ -110,13 +110,14 @@
         <p class="card-subtitle">{{ i18n.statistics.crops_by_category_hint }}</p>
     </div>
     <div class="card-body">
-        <div class="category-stats-grid">
+        <div class="category-stats-grid category-stats-grid-3">
             {% for category in categories %}
             <div class="category-card category-{{ category | lower }}">
                 <div class="category-header {{ category | lower }}">
                     <span class="category-name">{{ i18n.categories[category] }}</span>
                     {% set total_count = stats.crops_by_category[category] | sum(attribute='count') %}
-                    <span class="category-count">{{ total_count }} {{ i18n.stats.sub_beds }}</span>
+                    {% set total_length = stats.category_lengths[category] | round(1) %}
+                    <span class="category-count">{{ total_count }} {{ i18n.stats.sub_beds }} ({{ total_length }} m)</span>
                 </div>
                 <div class="category-body">
                     {% if stats.crops_by_category[category] %}
@@ -124,7 +125,7 @@
                         {% for crop in stats.crops_by_category[category] %}
                         <li class="crop-item">
                             <span class="crop-name">{{ crop.crop_name }}</span>
-                            <span class="crop-count">{{ crop.count }}</span>
+                            <span class="crop-count">{{ crop.count }} ({{ crop.length_m | round(1) }} m)</span>
                         </li>
                         {% endfor %}
                     </ul>

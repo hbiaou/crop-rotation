@@ -87,19 +87,20 @@
         {# ── Crops by Category ── #}
         <div class="print-section">
             <h2 class="print-section-title">{{ i18n.statistics.crops_by_category }}</h2>
-            <div class="print-categories-grid">
+            <div class="print-categories-grid print-categories-grid-3">
                 {% for category in categories %}
                 <div class="print-category-card">
                     <div class="print-category-header cat-{{ category | lower }}">
                         <span class="category-name">{{ i18n.categories[category] }}</span>
                         {% set total_count = stats.crops_by_category[category] | sum(attribute='count') %}
-                        <span class="category-count">({{ total_count }})</span>
+                        {% set total_length = stats.category_lengths[category] | round(1) %}
+                        <span class="category-count">({{ total_count }} - {{ total_length }} m)</span>
                     </div>
                     <div class="print-category-body">
                         {% if stats.crops_by_category[category] %}
                         <ul class="print-crop-list">
                             {% for crop in stats.crops_by_category[category] %}
-                            <li>{{ crop.crop_name }}: {{ crop.count }}</li>
+                            <li>{{ crop.crop_name }}: {{ crop.count }} ({{ crop.length_m | round(1) }} m)</li>
                             {% endfor %}
                         </ul>
                         {% else %}

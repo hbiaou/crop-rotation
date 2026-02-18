@@ -2867,6 +2867,23 @@ tbody tr:hover {
     gap: var(--spacing-md);
 }
 
+/* 3 cards per row variant for statistics with lengths */
+.category-stats-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 900px) {
+    .category-stats-grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .category-stats-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
 .category-card {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -2986,6 +3003,11 @@ tbody tr:hover {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--spacing-md);
+}
+
+/* 3 cards per row variant for print view with lengths */
+.print-categories-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
 }
 
 .print-category-card {

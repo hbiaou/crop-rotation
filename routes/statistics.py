@@ -30,7 +30,8 @@ def get_global_statistics():
     - total_sub_beds: total sub-beds across all gardens
     - active_sub_beds: total active sub-beds
     - reserve_sub_beds: total reserve sub-beds
-    - crops_by_category: dict of category -> list of {crop_name, count}
+    - crops_by_category: dict of category -> list of {crop_name, count, length_m}
+    - category_lengths: dict of category -> total length in meters
     """
     gardens = get_gardens()
     categories = get_categories()
@@ -43,6 +44,7 @@ def get_global_statistics():
         'active_sub_beds': 0,
         'reserve_sub_beds': 0,
         'crops_by_category': {cat: [] for cat in categories},
+        'category_lengths': {cat: 0.0 for cat in categories},
     }
 
     # Aggregate garden stats
@@ -64,6 +66,7 @@ def get_global_statistics():
             stats['reserve_sub_beds'] += garden_stats['reserve_sub_beds']
 
     # Count crops by category across all gardens (from latest cycles)
+    # Include sub-bed length based on garden configuration
     conn = get_db()
     try:
         # Get language setting for preferred names
@@ -88,23 +91,26 @@ def get_global_statistics():
         except Exception:
             pass  # Fallback to original crop names if plant db unavailable
 
-        # Get crop counts from cycle_plans across all gardens
+        # Get crop counts and lengths from cycle_plans across all gardens
         # Using actual values if present, otherwise planned values
+        # Sub-bed length = bed_length_m / sub_beds_per_bed
         crop_counts = conn.execute("""
             SELECT
                 c.category,
                 c.crop_name,
                 c.id as crop_id,
-                COUNT(*) as count
+                COUNT(*) as count,
+                SUM(g.bed_length_m / g.sub_beds_per_bed) as total_length_m
             FROM cycle_plans cp
             JOIN crops c ON COALESCE(cp.actual_crop_id, cp.planned_crop_id) = c.id
             JOIN sub_beds sb ON cp.sub_bed_id = sb.id
+            JOIN gardens g ON cp.garden_id = g.id
             WHERE sb.is_reserve = 0
               AND cp.cycle = (
                   SELECT MAX(cycle) FROM cycle_plans cp2 WHERE cp2.garden_id = cp.garden_id
               )
             GROUP BY c.category, c.id
-            ORDER BY c.category, count DESC, c.crop_name
+            ORDER BY c.category, total_length_m DESC, c.crop_name
         """).fetchall()
 
         for row in crop_counts:
@@ -112,10 +118,13 @@ def get_global_statistics():
             if cat in stats['crops_by_category']:
                 # Use preferred name if available
                 crop_name = crop_name_lookup.get(row['crop_id'], row['crop_name'])
+                length_m = row['total_length_m'] or 0.0
                 stats['crops_by_category'][cat].append({
                     'crop_name': crop_name,
                     'count': row['count'],
+                    'length_m': length_m,
                 })
+                stats['category_lengths'][cat] += length_m
     finally:
         conn.close()
 
@@ -246,9 +255,11 @@ def export_excel():
     row = 3
     for category in categories:
         crops = stats['crops_by_category'].get(category, [])
+        category_length = stats['category_lengths'].get(category, 0.0)
 
-        # Category header
-        cat_cell = ws_crops.cell(row=row, column=1, value=category)
+        # Category header with total length
+        cat_text = f"{category} ({round(category_length, 1)} m)"
+        cat_cell = ws_crops.cell(row=row, column=1, value=cat_text)
         cat_cell.font = HEADER_FONT
         if category in CATEGORY_FILLS:
             cat_cell.fill = CATEGORY_FILLS[category]
@@ -258,12 +269,14 @@ def export_excel():
         # Column headers
         ws_crops.cell(row=row, column=1, value="Culture").font = Font(bold=True)
         ws_crops.cell(row=row, column=2, value="Sous-planches").font = Font(bold=True)
+        ws_crops.cell(row=row, column=3, value="Longueur (m)").font = Font(bold=True)
         row += 1
 
         if crops:
             for crop in crops:
                 ws_crops.cell(row=row, column=1, value=crop['crop_name'])
                 ws_crops.cell(row=row, column=2, value=crop['count'])
+                ws_crops.cell(row=row, column=3, value=round(crop['length_m'], 1))
                 row += 1
         else:
             ws_crops.cell(row=row, column=1, value="(aucune culture)")
