@@ -8,6 +8,12 @@
     <p class="page-subtitle">{{ garden.name }} ({{ garden.garden_code }}) — Cycle {{ cycle }}</p>
 </div>
 
+<div class="alert alert-info mb-lg">
+    <strong>ℹ️ Information :</strong> L'enregistrement de la répartition réaffectera les cultures du cycle actuel ({{ cycle }})
+    selon les nouveaux pourcentages. Ces pourcentages seront également sauvegardés comme valeurs par défaut pour la génération
+    des prochains cycles.
+</div>
+
 <form method="post" action="{{ url_for('distribution.save_distribution', garden_id=garden.id, cycle=cycle) }}"
     id="distributionForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

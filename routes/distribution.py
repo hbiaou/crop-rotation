@@ -168,11 +168,12 @@ def distribution_page(garden_id, cycle):
 
 @distribution_bp.route('/<int:garden_id>/<cycle>', methods=['POST'])
 def save_distribution(garden_id, cycle):
-    """Save distribution percentages as defaults for future cycle generation.
+    """Save distribution percentages and reassign crops for the current cycle.
 
-    Note: This does NOT reassign crops on the current cycle. Distribution
-    percentages are saved and will be used when generating the next cycle.
+    Also saves percentages as garden defaults for future cycle generation.
     """
+    from rotation_engine import assign_crops
+
     garden = get_garden(garden_id)
     if not garden:
         flash("Jardin introuvable.", "error")
@@ -190,17 +191,21 @@ def save_distribution(garden_id, cycle):
             if pct > 0:
                 profiles.append((crop_id, pct))
 
-    # Save distribution profiles
+    # Save distribution profiles for this cycle
     success = save_distribution_profiles(garden_id, cycle, profiles)
     if not success:
         flash("Erreur lors de l'enregistrement de la répartition.", "error")
         return redirect(url_for('distribution.distribution_page',
                                 garden_id=garden_id, cycle=cycle))
 
-    # Save as garden defaults for future cycles
-    _save_as_garden_defaults(garden_id, profiles)
-
-    flash("Répartition enregistrée ! Elle sera appliquée lors de la génération du prochain cycle.", "success")
+    # Reassign crops for the current cycle based on new distribution
+    ok, err = assign_crops(garden_id, cycle)
+    if not ok:
+        flash(f"Répartition enregistrée, mais erreur lors de l'affectation : {err}", "warning")
+    else:
+        # Also save as garden defaults for future cycles
+        _save_as_garden_defaults(garden_id, profiles)
+        flash("Répartition enregistrée et cultures réaffectées avec succès !", "success")
 
     return redirect(url_for('main.index', garden_id=garden_id, cycle=cycle))
 
