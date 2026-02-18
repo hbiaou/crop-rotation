@@ -341,16 +341,36 @@ def get_cycles(garden_id=None):
 
 
 def get_crops(category=None):
-    """Retrieve crops, optionally filtered by category."""
+    """Retrieve crops, optionally filtered by category.
+
+    For crops linked to a plant (plant_id is set), the display name
+    will use the plant's current preferred name from the plant database.
+    """
     conn = get_db()
     if category:
-        crops = conn.execute(
+        rows = conn.execute(
             "SELECT * FROM crops WHERE category = ? ORDER BY crop_name",
             (category,)
         ).fetchall()
     else:
-        crops = conn.execute("SELECT * FROM crops ORDER BY category, crop_name").fetchall()
+        rows = conn.execute("SELECT * FROM crops ORDER BY category, crop_name").fetchall()
     conn.close()
+
+    # Convert to list of dicts and enrich with preferred names from plant database
+    crops = []
+    for row in rows:
+        crop = dict(row)
+        # If linked to a plant, try to get the current preferred name
+        if crop.get('plant_id'):
+            try:
+                from plant_database import get_preferred_name
+                preferred = get_preferred_name(crop['plant_id'])
+                if preferred:
+                    crop['crop_name'] = preferred
+            except Exception:
+                pass  # Keep original crop_name if plant db unavailable
+        crops.append(crop)
+
     return crops
 
 
