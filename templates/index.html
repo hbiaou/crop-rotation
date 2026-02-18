@@ -85,10 +85,19 @@
     </div>
     <div class="card-body">
         <div class="action-buttons">
+            {% if has_cycles %}
+            <a href="{{ url_for('cycle.bootstrap', garden_id=selected_garden_id) }}"
+               class="btn btn-primary btn-lg"
+               onclick="return confirm('⚠️ Attention : Ce jardin a déjà des cycles existants.\n\nLe démarrage à zéro écrasera les données du cycle que vous saisirez.\n\nÊtes-vous sûr de vouloir continuer ?');">
+                <span class="btn-icon">🚀</span>
+                {{ i18n.buttons.bootstrap }}
+            </a>
+            {% else %}
             <a href="{{ url_for('cycle.bootstrap', garden_id=selected_garden_id) }}" class="btn btn-primary btn-lg">
                 <span class="btn-icon">🚀</span>
                 {{ i18n.buttons.bootstrap }}
             </a>
+            {% endif %}
             <a href="{% if has_cycles %}{{ url_for('main.map_view', garden_id=selected_garden_id, cycle=selected_cycle) }}{% else %}#{% endif %}"
                 class="btn btn-secondary btn-lg {% if not has_cycles %}btn-disabled{% endif %}" {% if not has_cycles
                 %}aria-disabled="true" tabindex="-1" {% endif %}>
