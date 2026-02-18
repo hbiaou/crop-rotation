@@ -3,7 +3,7 @@ routes/distribution.py — Distribution adjustment routes.
 
 Provides:
 - GET /distribution/<garden_id>/<cycle> — View/edit crop distribution percentages
-- POST /distribution/<garden_id>/<cycle> — Save distribution and trigger crop assignment
+- POST /distribution/<garden_id>/<cycle> — Save distribution as defaults for future cycles
 
 See FEATURES_SPEC.md sections F3, F4.
 """
@@ -14,9 +14,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from database import (
     get_garden, get_crops, get_rotation_sequence,
     get_distribution_profiles, save_distribution_profiles, get_db,
-    get_setting
+    get_setting, update_setting
 )
-from rotation_engine import assign_crops
 
 distribution_bp = Blueprint('distribution', __name__, url_prefix='/distribution')
 
@@ -169,7 +168,11 @@ def distribution_page(garden_id, cycle):
 
 @distribution_bp.route('/<int:garden_id>/<cycle>', methods=['POST'])
 def save_distribution(garden_id, cycle):
-    """Save distribution percentages and trigger smart crop assignment."""
+    """Save distribution percentages as defaults for future cycle generation.
+
+    Note: This does NOT reassign crops on the current cycle. Distribution
+    percentages are saved and will be used when generating the next cycle.
+    """
     garden = get_garden(garden_id)
     if not garden:
         flash("Jardin introuvable.", "error")
@@ -194,11 +197,34 @@ def save_distribution(garden_id, cycle):
         return redirect(url_for('distribution.distribution_page',
                                 garden_id=garden_id, cycle=cycle))
 
-    # Trigger smart crop assignment
-    ok, err = assign_crops(garden_id, cycle)
-    if not ok:
-        flash(f"Répartition enregistrée, mais erreur lors de l'affectation : {err}", "warning")
-    else:
-        flash("Répartition enregistrée et cultures affectées avec succès !", "success")
+    # Save as garden defaults for future cycles
+    _save_as_garden_defaults(garden_id, profiles)
+
+    flash("Répartition enregistrée ! Elle sera appliquée lors de la génération du prochain cycle.", "success")
 
     return redirect(url_for('main.index', garden_id=garden_id, cycle=cycle))
+
+
+def _save_as_garden_defaults(garden_id, profiles):
+    """Save distribution profiles as garden defaults for future cycle generation.
+
+    Args:
+        garden_id: Garden ID
+        profiles: List of (crop_id, percentage) tuples
+    """
+    # Build crop_id -> crop info lookup
+    all_crops = get_crops()
+    crop_lookup = {c['id']: c for c in all_crops}
+
+    # Convert to {category: {crop_name: percentage}} format
+    defaults = {}
+    for crop_id, pct in profiles:
+        crop = crop_lookup.get(crop_id)
+        if crop:
+            cat = crop['category']
+            if cat not in defaults:
+                defaults[cat] = {}
+            defaults[cat][crop['crop_name']] = pct
+
+    # Save to settings
+    update_setting(f'distribution_defaults_{garden_id}', json.dumps(defaults))
