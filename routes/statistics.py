@@ -14,7 +14,7 @@ Shows aggregated statistics across all gardens including:
 """
 
 from flask import Blueprint, render_template, send_file
-from database import get_gardens, get_garden_stats, get_crops, get_categories, get_cycles, get_db
+from database import get_gardens, get_garden_stats, get_crops, get_categories, get_cycles, get_db, get_setting
 from datetime import date
 
 statistics_bp = Blueprint('statistics', __name__, url_prefix='/statistics')
@@ -66,6 +66,28 @@ def get_global_statistics():
     # Count crops by category across all gardens (from latest cycles)
     conn = get_db()
     try:
+        # Get language setting for preferred names
+        lang = get_setting('language', 'fr')
+
+        # Build crop_id -> preferred_name lookup
+        crop_name_lookup = {}
+        try:
+            from plant_database import get_preferred_name
+            crops_rows = conn.execute("SELECT id, plant_id, crop_name FROM crops").fetchall()
+            for crop_row in crops_rows:
+                crop_id = crop_row['id']
+                plant_id = crop_row['plant_id']
+                if plant_id:
+                    preferred = get_preferred_name(plant_id, lang=lang)
+                    if preferred:
+                        crop_name_lookup[crop_id] = preferred
+                    else:
+                        crop_name_lookup[crop_id] = crop_row['crop_name']
+                else:
+                    crop_name_lookup[crop_id] = crop_row['crop_name']
+        except Exception:
+            pass  # Fallback to original crop names if plant db unavailable
+
         # Get crop counts from cycle_plans across all gardens
         # Using actual values if present, otherwise planned values
         crop_counts = conn.execute("""
@@ -81,15 +103,17 @@ def get_global_statistics():
               AND cp.cycle = (
                   SELECT MAX(cycle) FROM cycle_plans cp2 WHERE cp2.garden_id = cp.garden_id
               )
-            GROUP BY c.category, c.crop_name
+            GROUP BY c.category, c.id
             ORDER BY c.category, count DESC, c.crop_name
         """).fetchall()
 
         for row in crop_counts:
             cat = row['category']
             if cat in stats['crops_by_category']:
+                # Use preferred name if available
+                crop_name = crop_name_lookup.get(row['crop_id'], row['crop_name'])
                 stats['crops_by_category'][cat].append({
-                    'crop_name': row['crop_name'],
+                    'crop_name': crop_name,
                     'count': row['count'],
                 })
     finally:
