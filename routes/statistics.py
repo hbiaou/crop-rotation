@@ -14,7 +14,7 @@ Shows aggregated statistics across all gardens including:
 """
 
 from flask import Blueprint, render_template, send_file
-from database import get_gardens, get_garden_stats, get_crops, get_categories, get_cycles, get_db, get_setting
+from database import get_gardens, get_garden_stats, get_categories, get_db, get_setting
 from datetime import date
 
 statistics_bp = Blueprint('statistics', __name__, url_prefix='/statistics')
@@ -160,7 +160,7 @@ def export_excel():
     """Export global statistics as Excel file."""
     from io import BytesIO
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Font, PatternFill, Alignment
     from utils.backup import backup_db
 
     # Auto-backup before export
@@ -182,10 +182,7 @@ def export_excel():
     HEADER_FILL = PatternFill(start_color='1565C0', end_color='1565C0', fill_type='solid')
     HEADER_ALIGNMENT = Alignment(horizontal='center', vertical='center', wrap_text=True)
     TITLE_FONT = Font(name='Calibri', bold=True, size=14)
-    CELL_BORDER = Border(
-        bottom=Side(style='thin', color='E2E8F0'),
-        right=Side(style='thin', color='E2E8F0'),
-    )
+
 
     wb = openpyxl.Workbook()
 

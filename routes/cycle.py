@@ -14,7 +14,6 @@ See FEATURES_SPEC.md sections F1, F2, F6, F8.
 """
 
 import json
-import os
 import re
 import random
 from datetime import datetime
